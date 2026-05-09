@@ -52,7 +52,7 @@ export default function CloudinaryPage() {
   };
 
   useEffect(() => {
-    fetchUsage();
+    void fetchUsage();
   }, []);
 
   const handleRefresh = async () => {

@@ -54,7 +54,7 @@ export default function BookingsPage() {
   };
 
   useEffect(() => {
-    loadBookings(page);
+    void loadBookings(page);
   }, [page]);
 
   const visibleBookings = useMemo(() => {

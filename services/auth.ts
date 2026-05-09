@@ -13,6 +13,10 @@ interface BackendLoginResponse {
     last_name: string;
     phone: string;
     is_active: boolean;
+    is_staff?: boolean;
+    is_superuser?: boolean;
+    groups?: string[];
+    permissions?: string[];
   };
 }
 
@@ -35,15 +39,26 @@ export const authService = {
     }
     
     // Transform backend response to match frontend expectations
-    // Since backend doesn't provide is_staff/is_superuser, we assume authenticated users are admins
+    const user = {
+      ...response.data.user,
+      is_staff: Boolean(response.data.user.is_staff),
+      is_superuser: Boolean(response.data.user.is_superuser),
+      groups: response.data.user.groups || [],
+      permissions: response.data.user.permissions || [],
+    };
+
+    if (!user.is_staff && !user.is_superuser) {
+      setAuthToken(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('admin_refresh_token');
+      }
+      throw new Error('This account is not authorized for the admin dashboard.');
+    }
+
     return {
       access: response.data.access,
       refresh: response.data.refresh,
-      user: {
-        ...response.data.user,
-        is_staff: true, // Assume true for now - should be verified on backend
-        is_superuser: true, // Assume true for now - should be verified on backend
-      },
+      user,
     };
   },
 
@@ -76,8 +91,10 @@ export const authService = {
     const response = await api.get<BackendLoginResponse['user']>('/auth/me/');
     return {
       ...response.data,
-      is_staff: true, // Assume true - should be verified on backend
-      is_superuser: true, // Assume true - should be verified on backend
+      is_staff: Boolean(response.data.is_staff),
+      is_superuser: Boolean(response.data.is_superuser),
+      groups: response.data.groups || [],
+      permissions: response.data.permissions || [],
     };
   },
 
@@ -87,8 +104,8 @@ export const authService = {
    */
   verifyAdmin: async (): Promise<boolean> => {
     try {
-      await authService.getProfile();
-      return true; // If profile fetch succeeds, user is authenticated
+      const user = await authService.getProfile();
+      return Boolean(user.is_staff || user.is_superuser);
     } catch {
       return false;
     }

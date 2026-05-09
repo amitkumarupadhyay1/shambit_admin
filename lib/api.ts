@@ -9,6 +9,15 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+export const getWsBaseUrl = (): string => {
+  return API_BASE_URL.replace(/^http/, 'ws').replace(/\/api$/, '/ws/support');
+};
+
+export const getWsUrl = (ticketRef: string, token?: string): string => {
+  const base = `${getWsBaseUrl()}/${ticketRef}/`;
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+};
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,

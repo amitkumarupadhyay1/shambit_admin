@@ -4,9 +4,12 @@ export interface User {
   username: string;
   first_name: string;
   last_name: string;
+  phone?: string;
   is_staff: boolean;
   is_superuser: boolean;
   is_active: boolean;
+  groups?: string[];
+  permissions?: string[];
 }
 
 export interface LoginCredentials {

@@ -9,7 +9,9 @@ import {
   Users, 
   Building2, 
   Calendar, 
+  Headset,
   Settings,
+  IndianRupee,
   LogOut,
   Menu,
   X
@@ -25,8 +27,12 @@ const navigation = [
   { name: 'Partners', href: '/partners', icon: Users },
   { name: 'Properties', href: '/properties', icon: Building2 },
   { name: 'Bookings', href: '/bookings', icon: Calendar },
+  { name: 'Support', href: '/support', icon: Headset },
+  { name: 'Pricing', href: '/pricing', icon: IndianRupee },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
+
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
 
 export default function DashboardLayout({
   children,
@@ -44,14 +50,45 @@ export default function DashboardLayout({
       router.push('/login');
       return;
     }
-    
-    // Use setTimeout to avoid setState in effect
-    const timer = setTimeout(() => {
+
+    let mounted = true;
+    void authService.verifyAdmin().then((isAdmin) => {
+      if (!mounted) return;
+      if (!isAdmin) {
+        toast.error('Admin access is required.');
+        void authService.logout();
+        router.push('/login');
+        return;
+      }
       setIsLoading(false);
-    }, 0);
-    
-    return () => clearTimeout(timer);
+    });
+
+    return () => {
+      mounted = false;
+    };
   }, [router]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        toast.error('Session expired after 30 minutes of inactivity.');
+        void authService.logout().finally(() => router.push('/login'));
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const events = ['mousemove', 'keydown', 'click', 'touchstart'];
+    events.forEach((eventName) => window.addEventListener(eventName, resetTimer));
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach((eventName) => window.removeEventListener(eventName, resetTimer));
+    };
+  }, [isLoading, router]);
 
   const handleLogout = async () => {
     try {

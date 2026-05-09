@@ -28,7 +28,9 @@ export default function LoginPage() {
     } catch (error) {
       console.error('Login error:', error);
       const axiosError = error as { response?: { data?: { detail?: string } } };
-      const errorMessage = axiosError.response?.data?.detail || 'Invalid credentials';
+      const errorMessage =
+        axiosError.response?.data?.detail ||
+        (error instanceof Error ? error.message : 'Invalid credentials');
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
