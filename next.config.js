@@ -15,6 +15,11 @@ const nextConfig = {
         pathname: '/media/**',
       },
     ],
+    minimumCacheTTL: 300,
+    formats: ['image/webp'],
+    dangerouslyAllowSVG: false,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 };
 
