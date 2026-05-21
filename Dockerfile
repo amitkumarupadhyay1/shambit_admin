@@ -1,13 +1,13 @@
 # Stage 1: Install dependencies
-FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:26-alpine AS deps
+RUN apk add --no-cache libc6-compat && npm install -g npm@latest
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
 # Stage 2: Build
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -28,7 +28,7 @@ ENV NODE_ENV=production
 RUN npm run build
 
 # Stage 3: Production runner
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 
 LABEL org.opencontainers.image.title="Shambit Admin Frontend" \

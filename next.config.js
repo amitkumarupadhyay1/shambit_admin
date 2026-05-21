@@ -3,7 +3,7 @@ const nextConfig = {
   reactCompiler: true,
   output: 'standalone',
   // Allow network access for testing
-  allowedDevOrigins: ['192.168.3.103'],
+  allowedDevOrigins: ['localhost', '127.0.0.1'],
   images: {
     remotePatterns: [
       {
