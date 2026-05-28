@@ -1,22 +1,43 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, Calendar, ChevronLeft, ChevronRight, RefreshCcw, Search, Users } from 'lucide-react';
+import {
+  AlertTriangle,
+  Building2,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  RefreshCcw,
+  Search,
+  Users,
+} from 'lucide-react';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { bookingsService } from '@/services/bookings';
-import type { AdminBookingListResponse, AdminHotelBooking } from '@/types/booking';
+import type { AdminBookingListResponse, AdminHotelBooking, AdminRefundProcessResponse } from '@/types/booking';
 
-const statusOptions = ['ALL', 'CONFIRMED', 'PENDING_PAYMENT', 'DRAFT', 'CANCELLED', 'EXPIRED'] as const;
+const statusOptions = [
+  'ALL',
+  'CONFIRMED',
+  'PENDING_PAYMENT',
+  'DRAFT',
+  'CANCELLED',
+  'REFUND_PENDING',
+  'REFUNDED',
+  'EXPIRED',
+] as const;
 
 const statusStyles: Record<string, string> = {
   CONFIRMED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   PENDING_PAYMENT: 'bg-amber-50 text-amber-700 border-amber-200',
   DRAFT: 'bg-blue-50 text-blue-700 border-blue-200',
   CANCELLED: 'bg-red-50 text-red-700 border-red-200',
+  REFUND_PENDING: 'bg-sky-50 text-sky-700 border-sky-200',
+  REFUNDED: 'bg-teal-50 text-teal-700 border-teal-200',
   EXPIRED: 'bg-slate-100 text-slate-700 border-slate-200',
 };
 
@@ -192,7 +213,11 @@ export default function BookingsPage() {
           ) : (
             <div className="space-y-4">
               {visibleBookings.map((booking) => (
-                <BookingRow key={booking.id} booking={booking} />
+                <BookingRow
+                  key={booking.id}
+                  booking={booking}
+                  onRefundProcessed={() => loadBookings(page, true)}
+                />
               ))}
             </div>
           )}
@@ -229,7 +254,54 @@ export default function BookingsPage() {
   );
 }
 
-function BookingRow({ booking }: { booking: AdminHotelBooking }) {
+function getAmount(value?: string) {
+  const parsed = Number.parseFloat(value || '0');
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function estimateGatewayLoss(totalAmount: string) {
+  return getAmount(totalAmount) * 0.0236;
+}
+
+function BookingRow({
+  booking,
+  onRefundProcessed,
+}: {
+  booking: AdminHotelBooking;
+  onRefundProcessed: () => void;
+}) {
+  const [processingRefund, setProcessingRefund] = useState(false);
+  const [refundResult, setRefundResult] = useState<AdminRefundProcessResponse | null>(null);
+  const [refundError, setRefundError] = useState<string | null>(null);
+  const cancellationPenalty = getAmount(booking.cancellation_fee);
+  const cancellationGst = getAmount(booking.cancellation_gst_amount);
+  const totalDeduction = cancellationPenalty + cancellationGst;
+  const storedRefundAmount = getAmount(booking.refund_amount);
+  const refundAmount =
+    storedRefundAmount > 0 ? storedRefundAmount : Math.max(getAmount(booking.total_amount) - totalDeduction, 0);
+  const canProcessRefund = booking.status === 'CANCELLED' && refundAmount > 0;
+
+  const handleProcessRefund = async () => {
+    setProcessingRefund(true);
+    setRefundError(null);
+    try {
+      const result = await bookingsService.processRefund(booking.id);
+      setRefundResult(result);
+      onRefundProcessed();
+    } catch (error) {
+      const message =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { error?: string } } }).response?.data?.error === 'string'
+          ? (error as { response: { data: { error: string } } }).response.data.error
+          : 'Refund processing failed. Check the payment record and Razorpay balance.';
+      setRefundError(message);
+    } finally {
+      setProcessingRefund(false);
+    }
+  };
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -277,6 +349,70 @@ function BookingRow({ booking }: { booking: AdminHotelBooking }) {
           </div>
         </div>
       </div>
+
+      {['CANCELLED', 'REFUND_PENDING', 'REFUNDED'].includes(booking.status) && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-amber-900">
+                <CreditCard className="h-4 w-4" />
+                Refund processing
+              </div>
+              <div className="mt-3 grid gap-3 text-sm text-amber-900 sm:grid-cols-2 lg:grid-cols-5">
+                <p>
+                  <span className="block text-xs uppercase tracking-wide text-amber-700">Paid</span>
+                  {formatCurrency(booking.total_amount)}
+                </p>
+                <p>
+                  <span className="block text-xs uppercase tracking-wide text-amber-700">Penalty</span>
+                  {formatCurrency(cancellationPenalty)}
+                </p>
+                <p>
+                  <span className="block text-xs uppercase tracking-wide text-amber-700">
+                    GST{booking.cancellation_gst_rate ? ` ${booking.cancellation_gst_rate}%` : ''}
+                  </span>
+                  {formatCurrency(cancellationGst)}
+                </p>
+                <p>
+                  <span className="block text-xs uppercase tracking-wide text-amber-700">Net refund</span>
+                  {formatCurrency(refundAmount)}
+                </p>
+                <p>
+                  <span className="block text-xs uppercase tracking-wide text-amber-700">Gateway loss est.</span>
+                  {formatCurrency(estimateGatewayLoss(booking.total_amount))}
+                </p>
+              </div>
+              <div className="mt-3 flex items-start gap-2 text-xs text-amber-800">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                Razorpay payment fees and GST are not reversed on captured-payment refunds; this estimate uses 2% plus 18% GST.
+              </div>
+            </div>
+
+            <Button
+              variant={canProcessRefund ? 'primary' : 'outline'}
+              size="sm"
+              onClick={handleProcessRefund}
+              disabled={!canProcessRefund || processingRefund}
+              isLoading={processingRefund}
+              className="shrink-0 gap-2"
+            >
+              <CreditCard className="h-4 w-4" />
+              {booking.status === 'REFUNDED'
+                ? 'Refunded'
+                : booking.status === 'REFUND_PENDING'
+                  ? 'Refund Pending'
+                  : 'Process Refund'}
+            </Button>
+          </div>
+
+          {refundResult && (
+            <p className="mt-3 text-sm font-semibold text-emerald-700">
+              Refund {refundResult.refund_id || ''} {refundResult.already_processed ? 'was already recorded' : 'submitted'} for {formatCurrency(refundResult.refund_amount)}.
+            </p>
+          )}
+          {refundError && <p className="mt-3 text-sm font-semibold text-red-700">{refundError}</p>}
+        </div>
+      )}
     </div>
   );
 }

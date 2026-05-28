@@ -18,8 +18,22 @@ export interface AdminHotelBooking {
   num_rooms: number;
   num_guests: number;
   total_amount: string;
+  cancellation_fee?: string;
+  cancellation_gst_amount?: string;
+  cancellation_gst_rate?: string;
+  refund_amount?: string;
+  cancellation_reason?: string;
   currency: string;
-  status: 'DRAFT' | 'PENDING_PAYMENT' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED' | string;
+  status:
+    | 'DRAFT'
+    | 'PENDING_PAYMENT'
+    | 'PAYMENT_FAILED'
+    | 'CONFIRMED'
+    | 'CANCELLED'
+    | 'REFUND_PENDING'
+    | 'REFUNDED'
+    | 'EXPIRED'
+    | string;
   customer_name: string;
   customer_email: string;
   customer_phone: string;
@@ -31,4 +45,18 @@ export interface AdminBookingListResponse {
   next: string | null;
   previous: string | null;
   results: AdminHotelBooking[];
+}
+
+export interface AdminRefundProcessResponse {
+  booking_reference: string;
+  refund_id?: string;
+  refund_status: string;
+  refund_amount: string;
+  booking_status?: string;
+  already_processed?: boolean;
+  cancellation_fee: string;
+  cancellation_penalty_amount: string;
+  cancellation_fee_gst_amount: string;
+  cancellation_fee_gst_rate?: string;
+  gateway_fee_loss_estimate?: string;
 }
