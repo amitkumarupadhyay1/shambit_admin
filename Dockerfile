@@ -3,6 +3,9 @@ FROM node:26-alpine AS deps
 RUN apk add --no-cache libc6-compat && npm install -g npm@latest
 WORKDIR /app
 COPY package.json package-lock.json* ./
+# Copy scripts/ so prepare-husky.mjs can be found by npm ci's prepare hook.
+# The script already exits 0 when .git is absent (Docker has no .git dir).
+COPY scripts/ ./scripts/
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
