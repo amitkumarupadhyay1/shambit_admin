@@ -15,8 +15,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://admin.shambit.com"),
   title: "ShamBit Admin - Platform Management",
   description: "Admin dashboard for managing ShamBit platform",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      nosnippet: true,
+    },
+  },
 };
 
 export default function RootLayout({
