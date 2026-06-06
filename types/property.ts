@@ -9,6 +9,9 @@ export type PropertyType = 'HOTEL' | 'RESORT' | 'VILLA' | 'HOMESTAY' | 'HOSTEL' 
 
 export type CommissionType = 'MARKUP' | 'DEDUCTION';
 
+export type PanVerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
+export type BankVerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED' | 'FAILED_BOUNCE';
+
 export type PropertyPhotoCategory = 'EXTERIOR' | 'LOBBY' | 'POOL' | 'DINING' | 'COMMON_AREAS' | 'AMENITIES';
 
 export type RoomPhotoCategory = 'ROOM_MAIN' | 'ROOM_ANGLE' | 'BATHROOM' | 'ROOM_AMENITIES';
@@ -87,6 +90,7 @@ export interface HotelPartnerProperty {
     longitude?: string;
     pan_number?: string;
     pan_name?: string;
+    pan_verification_status?: PanVerificationStatus;
     gstin?: string;
     registration_status?: 'REGISTERED' | 'UNREGISTERED' | 'EXEMPTED';
     state_code?: string;
@@ -94,6 +98,7 @@ export interface HotelPartnerProperty {
     bank_ifsc?: string;
     bank_name?: string;
     bank_account_holder_name?: string;
+    bank_verification_status?: BankVerificationStatus;
     trade_licence_number?: string;
     trade_licence_expiry?: string;
     tourism_registration_number?: string;

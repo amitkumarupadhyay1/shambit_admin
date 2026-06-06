@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import type { HotelPartnerProperty, AdminPropertyListResponse } from '@/types/property';
+import type { HotelPartnerProperty, AdminPropertyListResponse, PanVerificationStatus, BankVerificationStatus } from '@/types/property';
 
 export const adminPropertyService = {
   getProperties: async (filters?: {
@@ -31,6 +31,22 @@ export const adminPropertyService = {
     const response = await api.post<{ message: string }>(
       `/hotel-partners/admin/properties/${id}/reject/`,
       { rejection_reason: reason }
+    );
+    return response.data;
+  },
+
+  verifyPan: async (id: number, status: PanVerificationStatus): Promise<{ message: string; property: HotelPartnerProperty }> => {
+    const response = await api.post<{ message: string; property: HotelPartnerProperty }>(
+      `/hotel-partners/admin/properties/${id}/verify_pan/`,
+      { status }
+    );
+    return response.data;
+  },
+
+  verifyBank: async (id: number, status: BankVerificationStatus): Promise<{ message: string; property: HotelPartnerProperty }> => {
+    const response = await api.post<{ message: string; property: HotelPartnerProperty }>(
+      `/hotel-partners/admin/properties/${id}/verify_bank/`,
+      { status }
     );
     return response.data;
   },

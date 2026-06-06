@@ -12,14 +12,18 @@ import {
   ShieldCheck,
   CreditCard,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  ExternalLink,
+  XCircle,
+  Clock,
+  Ban
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { adminPropertyService } from '@/services/adminPropertyService';
 import { cityService, type City } from '@/services/cityService';
-import type { HotelPartnerProperty, PropertyStatus } from '@/types/property';
+import type { HotelPartnerProperty, PropertyStatus, PanVerificationStatus, BankVerificationStatus } from '@/types/property';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +35,41 @@ const STATUS_VARIANTS: Record<PropertyStatus, 'default' | 'info' | 'warning' | '
   REJECTED: 'error',
 };
 
+// Verification badge component
+function VerificationBadge({ status }: { status?: string }) {
+  if (!status || status === 'PENDING') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-black uppercase tracking-widest">
+        <Clock className="w-2.5 h-2.5" />
+        Pending
+      </span>
+    );
+  }
+  if (status === 'VERIFIED') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-black uppercase tracking-widest">
+        <CheckCircle2 className="w-2.5 h-2.5" />
+        Verified
+      </span>
+    );
+  }
+  if (status === 'FAILED_BOUNCE') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[9px] font-black uppercase tracking-widest">
+        <Ban className="w-2.5 h-2.5" />
+        Bounced
+      </span>
+    );
+  }
+  // REJECTED
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[9px] font-black uppercase tracking-widest">
+      <XCircle className="w-2.5 h-2.5" />
+      Rejected
+    </span>
+  );
+}
+
 export default function PropertyDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -40,6 +79,8 @@ export default function PropertyDetailPage() {
   const [cities, setCities] = useState<City[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [isPanVerifying, setIsPanVerifying] = useState(false);
+  const [isBankVerifying, setIsBankVerifying] = useState(false);
   
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -115,6 +156,38 @@ export default function PropertyDetailPage() {
     }
   };
 
+  const handleVerifyPan = async (status: PanVerificationStatus) => {
+    try {
+      setIsPanVerifying(true);
+      const result = await adminPropertyService.verifyPan(id, status);
+      setProperty(result.property);
+      toast.success(`PAN status set to ${status}`);
+    } catch (error) {
+      console.error('PAN verification failed:', error);
+      toast.error('Failed to update PAN verification status');
+    } finally {
+      setIsPanVerifying(false);
+    }
+  };
+
+  const handleVerifyBank = async (status: BankVerificationStatus) => {
+    try {
+      setIsBankVerifying(true);
+      const result = await adminPropertyService.verifyBank(id, status);
+      setProperty(result.property);
+      toast.success(`Bank status set to ${status}`);
+    } catch (error) {
+      console.error('Bank verification failed:', error);
+      toast.error('Failed to update bank verification status');
+    } finally {
+      setIsBankVerifying(false);
+    }
+  };
+
+  const panVerified = property?.pan_verification_status === 'VERIFIED';
+  const bankVerified = property?.bank_verification_status === 'VERIFIED';
+  const approvalBlocked = !panVerified || !bankVerified;
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
@@ -173,12 +246,27 @@ export default function PropertyDetailPage() {
                 >
                   Reject Submission
                 </Button>
-                <Button 
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 shadow-lg shadow-emerald-600/20"
-                  onClick={() => setShowApproveDialog(true)}
-                >
-                  Approve & Go Live
-                </Button>
+                <div className="relative group">
+                  <Button 
+                    className={cn(
+                      "font-bold px-8 shadow-lg",
+                      approvalBlocked
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none"
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+                    )}
+                    onClick={() => !approvalBlocked && setShowApproveDialog(true)}
+                    disabled={approvalBlocked}
+                  >
+                    Approve & Go Live
+                  </Button>
+                  {approvalBlocked && (
+                    <div className="absolute bottom-full mb-2 right-0 w-64 bg-gray-900 text-white text-xs font-medium rounded-xl p-3 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      <p className="font-bold mb-1">Verification Required</p>
+                      {!panVerified && <p className="text-gray-300">• PAN not verified</p>}
+                      {!bankVerified && <p className="text-gray-300">• Bank details not verified</p>}
+                    </div>
+                  )}
+                </div>
               </>
             ) : property.status === 'APPROVED' && (
               <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 font-bold text-sm">
@@ -188,6 +276,23 @@ export default function PropertyDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Verification warning banner */}
+        {(property.status === 'SUBMITTED' || property.status === 'UNDER_REVIEW') && approvalBlocked && (
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-black text-amber-900 uppercase tracking-tight">Approval Blocked — Verify before going live</p>
+              <p className="text-xs text-amber-700 font-medium mt-1">
+                {!panVerified && !bankVerified
+                  ? 'Both PAN and bank details need to be verified before this property can be approved.'
+                  : !panVerified
+                  ? 'PAN details must be verified before this property can be approved.'
+                  : 'Bank details must be verified before this property can be approved.'}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -291,16 +396,61 @@ export default function PropertyDetailPage() {
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">PAN Identification</p>
-                    <p className="text-sm font-bold text-gray-900 tracking-widest">{property.pan_number}</p>
-                    <p className="text-[10px] text-gray-500 font-medium uppercase">{property.pan_name}</p>
+                {/* PAN Section */}
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">PAN Identification</p>
+                      <p className="text-sm font-bold text-gray-900 tracking-widest">{property.pan_number}</p>
+                      <p className="text-[10px] text-gray-500 font-medium uppercase">{property.pan_name}</p>
+                    </div>
+                    <VerificationBadge status={property.pan_verification_status} />
                   </div>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+
+                  {/* PAN Actions */}
+                  <div className="flex flex-col gap-2">
+                    <a
+                      href="https://eportal.incometax.gov.in/iec/foservices/#/pre-login/verifyYourPAN"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[10px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-widest transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Verify on Income Tax Portal
+                    </a>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleVerifyPan('VERIFIED')}
+                        disabled={isPanVerifying || property.pan_verification_status === 'VERIFIED'}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors",
+                          property.pan_verification_status === 'VERIFIED'
+                            ? "bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-default"
+                            : "bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"
+                        )}
+                      >
+                        {isPanVerifying ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                        Mark Verified
+                      </button>
+                      <button
+                        onClick={() => handleVerifyPan('REJECTED')}
+                        disabled={isPanVerifying || property.pan_verification_status === 'REJECTED'}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors",
+                          property.pan_verification_status === 'REJECTED'
+                            ? "bg-red-50 text-red-600 border border-red-200 cursor-default"
+                            : "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 cursor-pointer"
+                        )}
+                      >
+                        {isPanVerifying ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+                        Reject
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex items-start justify-between">
+                {/* GST Section */}
+                <div className="flex items-start justify-between pt-3 border-t border-gray-100">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">GST Registry</p>
                     <p className="text-sm font-bold text-gray-900">{property.gstin || 'NOT REGISTERED'}</p>
@@ -359,10 +509,13 @@ export default function PropertyDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Bank Identifier</p>
-                <p className="text-sm font-bold text-gray-900 uppercase">{property.bank_name}</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">IFSC: {property.bank_ifsc}</p>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Bank Identifier</p>
+                  <p className="text-sm font-bold text-gray-900 uppercase">{property.bank_name}</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">IFSC: {property.bank_ifsc}</p>
+                </div>
+                <VerificationBadge status={property.bank_verification_status} />
               </div>
               <div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account Number</p>
@@ -371,6 +524,42 @@ export default function PropertyDetailPage() {
               <div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Payee</p>
                 <p className="text-sm font-bold text-gray-900">{property.bank_account_holder_name}</p>
+              </div>
+
+              {/* Bank Verification Actions */}
+              <div className="pt-4 border-t border-gray-100 space-y-2">
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Bank Verification</p>
+                <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
+                  Verify by matching the account holder name above with your bank records, or rely on the first payout cycle.
+                </p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => handleVerifyBank('VERIFIED')}
+                    disabled={isBankVerifying || property.bank_verification_status === 'VERIFIED'}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors",
+                      property.bank_verification_status === 'VERIFIED'
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-default"
+                        : "bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer"
+                    )}
+                  >
+                    {isBankVerifying ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                    Mark Verified
+                  </button>
+                  <button
+                    onClick={() => handleVerifyBank('REJECTED')}
+                    disabled={isBankVerifying || property.bank_verification_status === 'REJECTED'}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors",
+                      property.bank_verification_status === 'REJECTED'
+                        ? "bg-red-50 text-red-600 border border-red-200 cursor-default"
+                        : "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 cursor-pointer"
+                    )}
+                  >
+                    {isBankVerifying ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+                    Reject
+                  </button>
+                </div>
               </div>
             </CardContent>
           </Card>
