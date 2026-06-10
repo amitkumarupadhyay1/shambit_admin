@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { authService } from '@/services/auth';
 import toast from 'react-hot-toast';
 import { Shield } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,10 +16,18 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
+    turnstile_token: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if site key is configured and token is missing
+    if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !formData.turnstile_token) {
+      toast.error('Please complete the CAPTCHA verification. If you don\'t see it, please disable your adblocker.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -31,7 +40,13 @@ export default function LoginPage() {
       const errorMessage =
         axiosError.response?.data?.detail ||
         (error instanceof Error ? error.message : 'Invalid credentials');
-      toast.error(errorMessage);
+      
+      // Provide actionable feedback if it's a captcha error
+      if (errorMessage.toLowerCase().includes('captcha')) {
+        toast.error('Invalid CAPTCHA. Please disable your adblocker or tracking protection on this page and try again.');
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -87,6 +102,16 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                 />
               </div>
+
+              {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+                <div className="flex justify-center my-4">
+                  <Turnstile
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                    onSuccess={(token) => setFormData({ ...formData, turnstile_token: token })}
+                    onError={() => toast.error('CAPTCHA verification failed to load. Please disable your adblocker or tracking protection.')}
+                  />
+                </div>
+              )}
 
               <Button
                 type="submit"
