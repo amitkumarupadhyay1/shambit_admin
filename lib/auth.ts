@@ -1,5 +1,4 @@
 import NextAuth from "next-auth"
-import Google from "next-auth/providers/google"
 import axios from "axios"
 import type { JWT } from "next-auth/jwt"
 
@@ -101,14 +100,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     },
   },
-  providers: [
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
-    }),
-  ],
+  providers: [],
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         token.accessToken = user.accessToken
         token.refreshToken = user.refreshToken
@@ -119,48 +113,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.phone = user.phone
         token.expiresAt = getJwtExpiration(user.accessToken as string)
 
-        // Sync Social Login
-        if (account?.provider === "google") {
-          try {
-            const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL;
-            const fullName = user.name || ""
-            const [firstName, ...restName] = fullName.split(" ")
-            const lastName = restName.join(" ")
-            const providerToken = (account as Record<string, unknown>).id_token as string;
-
-            if (!providerToken) {
-              console.error(`Missing ${account.provider} provider token`)
-              return token
-            }
-
-            const res = await axios.post(`${apiUrl}/auth/nextauth-sync/`, {
-              email: user.email,
-              first_name: firstName,
-              last_name: lastName,
-              provider: account.provider,
-              uid: account.providerAccountId,
-              token: providerToken,
-            })
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const data = res.data as any;
-            token.accessToken = data.access
-            token.refreshToken = data.refresh
-            token.id = data.user_id
-            token.username = data.username
-            token.firstName = data.first_name || firstName
-            token.lastName = data.last_name || lastName
-            token.expiresAt = getJwtExpiration(data.access)
-          } catch (e) {
-            console.error("Sync failed", e)
-            return {
-              ...token,
-              accessToken: undefined,
-              refreshToken: undefined,
-              expiresAt: 0,
-              error: "OAuthSyncError",
-            }
-          }
-        }
+        // Sync Social Login removed
         return token
       }
 
