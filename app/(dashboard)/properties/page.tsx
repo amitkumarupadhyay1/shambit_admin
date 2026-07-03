@@ -25,13 +25,25 @@ export default function PropertiesPage() {
     status: '',
     city: '',
   });
+  
+  const [debouncedFilters, setDebouncedFilters] = useState(filters);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedFilters(filters);
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [filters]);
 
   const fetchProperties = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await adminPropertyService.getProperties({
-        status: filters.status || undefined,
-        city: filters.city || undefined,
+        status: debouncedFilters.status || undefined,
+        city: debouncedFilters.city || undefined,
       });
       setProperties(response.results);
     } catch (error) {
@@ -40,7 +52,7 @@ export default function PropertiesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters]);
+  }, [debouncedFilters]);
 
   useEffect(() => {
     fetchProperties();
