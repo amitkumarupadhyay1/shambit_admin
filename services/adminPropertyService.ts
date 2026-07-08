@@ -1,6 +1,5 @@
 import api from '@/lib/api';
-import type { HotelPartnerProperty, AdminPropertyListResponse, PanVerificationStatus, BankVerificationStatus } from '@/types/property';
-
+import type { HotelPartnerProperty, AdminPropertyListResponse, PanVerificationStatus, BankVerificationStatus, B2BContract } from '@/types/property';
 export const adminPropertyService = {
   getProperties: async (filters?: {
     status?: string;
@@ -48,6 +47,29 @@ export const adminPropertyService = {
       `/hotel-partners/admin/properties/${id}/verify_bank/`,
       { status }
     );
+    return response.data;
+  },
+
+  getB2BContract: async (hotelId: number): Promise<B2BContract | null> => {
+    try {
+      const response = await api.get<{ results: B2BContract[] }>(`/pricing/b2b/admin/contracts/?hotel=${hotelId}`);
+      if (response.data && response.data.results && response.data.results.length > 0) {
+        return response.data.results[0];
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch B2B contract:', error);
+      return null;
+    }
+  },
+
+  createB2BContract: async (data: B2BContract): Promise<B2BContract> => {
+    const response = await api.post<B2BContract>('/pricing/b2b/admin/contracts/', data);
+    return response.data;
+  },
+
+  updateB2BContract: async (id: number, data: Partial<B2BContract>): Promise<B2BContract> => {
+    const response = await api.patch<B2BContract>(`/pricing/b2b/admin/contracts/${id}/`, data);
     return response.data;
   },
 };

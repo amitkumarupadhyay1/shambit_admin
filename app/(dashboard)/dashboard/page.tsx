@@ -178,7 +178,7 @@ export default function DashboardPage() {
                   <span className="text-sm font-medium text-gray-900">Database</span>
                 </div>
                 <span className={`text-sm font-semibold ${health?.dependencies?.database?.status === 'connected' ? 'text-emerald-600' : health ? 'text-red-600' : 'text-gray-500'}`}>
-                  {health ? health.dependencies.database.status.toUpperCase() : 'Checking...'}
+                  {health ? (health.dependencies?.database?.status?.toUpperCase() || 'UNKNOWN') : 'Checking...'}
                 </span>
               </div>
 
@@ -189,7 +189,7 @@ export default function DashboardPage() {
                   <span className="text-sm font-medium text-gray-900">Redis Cache</span>
                 </div>
                 <span className={`text-sm font-semibold ${health?.dependencies?.cache?.status === 'connected' ? 'text-emerald-600' : health ? 'text-red-600' : 'text-gray-500'}`}>
-                  {health ? health.dependencies.cache.status.toUpperCase() : 'Checking...'}
+                  {health ? (health.dependencies?.cache?.status?.toUpperCase() || 'UNKNOWN') : 'Checking...'}
                 </span>
               </div>
 
@@ -200,7 +200,7 @@ export default function DashboardPage() {
                   <span className="text-sm font-medium text-gray-900">Cloud Storage</span>
                 </div>
                 <span className={`text-sm font-semibold ${health?.dependencies?.storage?.status === 'available' ? 'text-emerald-600' : health ? 'text-red-600' : 'text-gray-500'}`}>
-                  {health ? health.dependencies.storage.status.toUpperCase() : 'Checking...'}
+                  {health ? (health.dependencies?.storage?.status?.toUpperCase() || 'UNKNOWN') : 'Checking...'}
                 </span>
               </div>
             </div>

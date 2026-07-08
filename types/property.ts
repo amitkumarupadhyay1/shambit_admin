@@ -120,6 +120,25 @@ export interface HotelPartnerProperty {
     updated_at: string;
 }
 
+export type B2BCommissionType = 'PERCENTAGE' | 'FLAT' | 'PAX_MATRIX';
+
+export interface PaxMatrixData {
+    columns: string[];
+    rows: string[];
+    data: Record<string, Record<string, string | number>>;
+}
+
+export interface B2BContract {
+    id?: number;
+    hotel: number;
+    commission_type: B2BCommissionType;
+    value: string;
+    pax_matrix_json: PaxMatrixData | null;
+    is_active: boolean;
+    created_at?: string;
+    updated_at?: string;
+}
+
 export interface AdminPropertyListResponse {
     count: number;
     next: string | null;

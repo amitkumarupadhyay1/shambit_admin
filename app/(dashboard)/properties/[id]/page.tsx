@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { adminPropertyService } from '@/services/adminPropertyService';
 import { cityService, type City } from '@/services/cityService';
+import B2BContractManager from '@/components/property/B2BContractManager';
 import type { HotelPartnerProperty, PropertyStatus, PanVerificationStatus, BankVerificationStatus } from '@/types/property';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
@@ -99,7 +100,7 @@ export default function PropertyDetailPage() {
       
       // Attempt fuzzy match for city
       const matchedCity = cityData.find(c => 
-        c.name.toLowerCase() === propData.city_name.toLowerCase()
+        c.name?.toLowerCase() === propData.city_name?.toLowerCase()
       );
       if (matchedCity) {
         setSelectedCityId(matchedCity.id.toString());
@@ -231,8 +232,8 @@ export default function PropertyDetailPage() {
             </div>
             <h1 className="text-4xl font-black text-gray-900 tracking-tight">{property.property_name}</h1>
             <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
-              <MapPin className="w-4 h-4 text-emerald-500" />
-              {property.full_address}, {property.city_name}, {property.state} {property.pincode}
+              <MapPin className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+              {[property.full_address, property.city_name, property.state, property.pincode].filter(Boolean).join(', ')}
             </div>
           </div>
 
@@ -361,7 +362,7 @@ export default function PropertyDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {property.room_types.map((room) => (
+                  {(property.room_types || []).map((room) => (
                     <tr key={room.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <p className="text-sm font-bold text-gray-900">{room.room_name}</p>
@@ -372,7 +373,7 @@ export default function PropertyDetailPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <p className="text-sm font-black text-gray-900">₹{room.base_price_per_night}</p>
-                        {parseFloat(room.room_discount_percent) > 0 && (
+                        {parseFloat(room.room_discount_percent || '0') > 0 && (
                           <p className="text-[10px] text-emerald-600 font-black uppercase">-{room.room_discount_percent}% Applied</p>
                         )}
                       </td>
@@ -382,6 +383,9 @@ export default function PropertyDetailPage() {
               </table>
             </CardContent>
           </Card>
+
+          {/* B2B Contract Configuration */}
+          <B2BContractManager hotelId={id} />
         </div>
 
         {/* Right Column: Compliance & Banking */}
@@ -401,8 +405,8 @@ export default function PropertyDetailPage() {
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">PAN Identification</p>
-                      <p className="text-sm font-bold text-gray-900 tracking-widest">{property.pan_number}</p>
-                      <p className="text-[10px] text-gray-500 font-medium uppercase">{property.pan_name}</p>
+                      <p className="text-sm font-bold text-gray-900 tracking-widest">{property.pan_number || 'NOT PROVIDED'}</p>
+                      <p className="text-[10px] text-gray-500 font-medium uppercase">{property.pan_name || 'Not Provided'}</p>
                     </div>
                     <VerificationBadge status={property.pan_verification_status} />
                   </div>
@@ -456,7 +460,7 @@ export default function PropertyDetailPage() {
                     <p className="text-sm font-bold text-gray-900">{property.gstin || 'NOT REGISTERED'}</p>
                     <div className="flex gap-2">
                        <Badge variant={property.registration_status === 'REGISTERED' ? 'success' : 'default'} className="text-[8px] px-1.5 py-0 font-black uppercase">
-                         {property.registration_status}
+                         {property.registration_status || 'UNKNOWN'}
                        </Badge>
                        {property.state_code && (
                          <Badge variant="info" className="text-[8px] px-1.5 py-0 font-black uppercase">
@@ -512,18 +516,18 @@ export default function PropertyDetailPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Bank Identifier</p>
-                  <p className="text-sm font-bold text-gray-900 uppercase">{property.bank_name}</p>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">IFSC: {property.bank_ifsc}</p>
+                  <p className="text-sm font-bold text-gray-900 uppercase">{property.bank_name || 'NOT PROVIDED'}</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">IFSC: {property.bank_ifsc || 'N/A'}</p>
                 </div>
                 <VerificationBadge status={property.bank_verification_status} />
               </div>
               <div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account Number</p>
-                <p className="text-sm font-black text-gray-900 tracking-[0.1em]">{property.bank_account_number}</p>
+                <p className="text-sm font-black text-gray-900 tracking-[0.1em]">{property.bank_account_number || 'NOT PROVIDED'}</p>
               </div>
               <div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Payee</p>
-                <p className="text-sm font-bold text-gray-900">{property.bank_account_holder_name}</p>
+                <p className="text-sm font-bold text-gray-900">{property.bank_account_holder_name || 'Not Provided'}</p>
               </div>
 
               {/* Bank Verification Actions */}

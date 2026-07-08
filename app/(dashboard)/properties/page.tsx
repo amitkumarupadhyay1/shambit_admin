@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { Building2, Filter, ArrowRight, Loader2 } from 'lucide-react';
 import { adminPropertyService } from '@/services/adminPropertyService';
 import type { HotelPartnerProperty, PropertyStatus } from '@/types/property';
@@ -130,7 +129,7 @@ export default function PropertiesPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 font-bold shrink-0">
-                            {property.property_name[0]}
+                            {property.property_name?.[0] || '?'}
                           </div>
                           <div>
                             <p className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
@@ -156,11 +155,12 @@ export default function PropertiesPage() {
                         <p className="text-[10px] text-gray-400 uppercase font-bold">{property.state}</p>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <Link href={`/properties/${property.id}`}>
-                          <Button variant="outline" size="sm" className="gap-2">
-                            Review
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </Button>
+                        <Link 
+                          href={`/properties/${property.id}`}
+                          className="inline-flex items-center justify-center rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 px-3 py-1.5 text-sm border-2 border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-500 gap-2"
+                        >
+                          Review
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </Link>
                       </td>
                     </tr>
