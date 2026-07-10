@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import type { HotelPartnerProperty, AdminPropertyListResponse, PanVerificationStatus, BankVerificationStatus, B2BContract } from '@/types/property';
+import type { HotelPartnerProperty, AdminPropertyListResponse, PanVerificationStatus, BankVerificationStatus, B2BContract, RoomTypeMealPlan, B2BPreviewPayload, B2BPreviewResponse } from '@/types/property';
 export const adminPropertyService = {
   getProperties: async (filters?: {
     status?: string;
@@ -63,6 +63,11 @@ export const adminPropertyService = {
     }
   },
 
+  getB2BPreview: async (payload: B2BPreviewPayload): Promise<B2BPreviewResponse> => {
+    const response = await api.post<B2BPreviewResponse>('/pricing/b2b/preview/', payload);
+    return response.data;
+  },
+
   createB2BContract: async (data: B2BContract): Promise<B2BContract> => {
     const response = await api.post<B2BContract>('/pricing/b2b/admin/contracts/', data);
     return response.data;
@@ -71,5 +76,16 @@ export const adminPropertyService = {
   updateB2BContract: async (id: number, data: Partial<B2BContract>): Promise<B2BContract> => {
     const response = await api.patch<B2BContract>(`/pricing/b2b/admin/contracts/${id}/`, data);
     return response.data;
+  },
+
+  getRoomMealPlans: async (roomTypeId: number): Promise<RoomTypeMealPlan[]> => {
+    const response = await api.get<{results: RoomTypeMealPlan[]}>(`/hotel-partners/partners/room-meal-plans/?room_type=${roomTypeId}`);
+    // fallback if no pagination
+    if (response.data && Array.isArray(response.data.results)) {
+      return response.data.results;
+    } else if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    return [];
   },
 };

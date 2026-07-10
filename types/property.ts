@@ -41,6 +41,8 @@ export interface HotelPartnerRoomType {
     max_occupancy: number;
     total_inventory: number;
     base_price_per_night: string;
+    extra_adult_rate: string;
+    extra_child_rate: string;
     discounted_base_price_per_night: string;
     room_discount_percent: string;
     retail_price_per_night: string;
@@ -57,6 +59,26 @@ export interface HotelPartnerRoomType {
     approved_room_type_id?: number | null;
     created_at: string;
     updated_at: string;
+}
+
+export interface MealPlan {
+    code: string;
+    name: string;
+    includes_breakfast: boolean;
+    includes_lunch: boolean;
+    includes_dinner: boolean;
+}
+
+export interface RoomTypeMealPlan {
+    id: number;
+    room_type: number;
+    room_type_name: string;
+    meal_plan: MealPlan;
+    adult_price: string;
+    child_price: string;
+    infant_price: string;
+    tax_percent: string;
+    is_available: boolean;
 }
 
 export interface HotelPartnerProperty {
@@ -128,12 +150,21 @@ export interface PaxMatrixData {
     data: Record<string, Record<string, string | number>>;
 }
 
+export type ProfitMarginType = 'PERCENTAGE' | 'FLAT';
+export type TaxApplicationType = 'PRE_TAX' | 'POST_TAX';
+export type AgentDeductionStrategy = 'DEDUCT_FROM_PROFIT' | 'ADD_TO_SELLING_PRICE';
+
 export interface B2BContract {
     id?: number;
     hotel: number;
     commission_type: B2BCommissionType;
     value: string;
     pax_matrix_json: PaxMatrixData | null;
+    shambit_discount_rate: string;
+    shambit_profit_margin: string;
+    profit_margin_type?: ProfitMarginType;
+    tax_application?: TaxApplicationType;
+    agent_deduction_strategy?: AgentDeductionStrategy;
     is_active: boolean;
     created_at?: string;
     updated_at?: string;
@@ -144,4 +175,32 @@ export interface AdminPropertyListResponse {
     next: string | null;
     previous: string | null;
     results: HotelPartnerProperty[];
+}
+
+export interface B2BPreviewPayload {
+    hotel_id: number;
+    shambit_discount_rate: string;
+    shambit_profit_margin: string;
+    profit_margin_type: ProfitMarginType;
+    commission_type: B2BCommissionType;
+    value: string;
+    tax_application: TaxApplicationType;
+    agent_deduction_strategy: AgentDeductionStrategy;
+}
+
+export interface B2BPreviewRow {
+    id: string | number;
+    is_sub_row?: boolean;
+    room_type: string;
+    meal_plan: string;
+    b2c_price: number;
+    hotel_net: number;
+    profit: number;
+    final_b2b_selling: number;
+    agent_tac: number;
+    net_shambit_profit: number;
+}
+
+export interface B2BPreviewResponse {
+    matrices: B2BPreviewRow[][];
 }
