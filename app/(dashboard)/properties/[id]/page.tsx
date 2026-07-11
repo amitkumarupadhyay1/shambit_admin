@@ -11,6 +11,7 @@ import RoomDetailsStep from '@/components/property/wizard/RoomDetailsStep';
 import B2CConfigurationStep from '@/components/property/wizard/B2CConfigurationStep';
 import B2BContractManager from '@/components/property/B2BContractManager';
 import ComplianceStep from '@/components/property/wizard/ComplianceStep';
+import { cityService, type City } from '@/services/cityService';
 
 export default function PropertyWizardPage() {
   const params = useParams();
@@ -21,12 +22,18 @@ export default function PropertyWizardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   const [isApproving, setIsApproving] = useState(false);
+  const [cities, setCities] = useState<City[]>([]);
+  const [selectedCityId, setSelectedCityId] = useState<number | ''>('');
 
   const fetchDetails = useCallback(async () => {
     try {
       setIsLoading(true);
-      const propData = await adminPropertyService.getProperty(id);
+      const [propData, citiesData] = await Promise.all([
+        adminPropertyService.getProperty(id),
+        cityService.getCities().catch(() => [])
+      ]);
       setProperty(propData);
+      setCities(citiesData);
     } catch (error) {
       console.error('Failed to fetch details:', error);
       toast.error('Failed to load property details');
@@ -40,11 +47,13 @@ export default function PropertyWizardPage() {
   }, [fetchDetails]);
 
   const handleApprove = async () => {
+    if (!selectedCityId) {
+      toast.error('Please select a city mapping first');
+      return;
+    }
     try {
       setIsApproving(true);
-      // NOTE: Real implementation requires selecting a city mapping.
-      // For simplicity in this step, assuming default mapping or handled backend side.
-      await adminPropertyService.approveProperty(id, 1); 
+      await adminPropertyService.approveProperty(id, Number(selectedCityId)); 
       toast.success('Property approved successfully');
       fetchDetails();
     } catch (error) {
@@ -116,17 +125,29 @@ export default function PropertyWizardPage() {
         </div>
         
         {property.status !== 'APPROVED' ? (
-          <button
-            onClick={handleApprove}
-            disabled={!canApprove || isApproving}
-            className={`px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all ${
-              canApprove
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 shadow-lg'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {isApproving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve & Go Live'}
-          </button>
+          <div className="flex items-center gap-4">
+            <select
+              value={selectedCityId}
+              onChange={(e) => setSelectedCityId(Number(e.target.value) || '')}
+              className="px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:ring-2 focus:ring-blue-500/20 bg-white"
+            >
+              <option value="">Select City Mapping...</option>
+              {cities.map(c => (
+                <option key={c.id} value={c.id}>{c.name}, {c.state}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleApprove}
+              disabled={!canApprove || isApproving || !selectedCityId}
+              className={`px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all ${
+                canApprove && selectedCityId
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 shadow-lg'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              {isApproving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Approve & Go Live'}
+            </button>
+          </div>
         ) : (
           <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 font-bold text-sm">
             <CheckCircle2 className="w-4 h-4" />

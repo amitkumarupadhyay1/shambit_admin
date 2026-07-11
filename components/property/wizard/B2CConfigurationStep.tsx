@@ -20,7 +20,8 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
   const [saving, setSaving] = useState(false);
   const [contract, setContract] = useState<B2BContract | null>(null);
   
-  const [discountRate, setDiscountRate] = useState<string>('0.00');
+  type RoomDiscountConfig = { value: string; type: 'PERCENTAGE' | 'FLAT' };
+  const [roomDiscounts, setRoomDiscounts] = useState<Record<string, RoomDiscountConfig>>({});
 
   useEffect(() => {
     const fetchContract = async () => {
@@ -29,7 +30,27 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
         const existing = await adminPropertyService.getB2BContract(property.id);
         if (existing) {
           setContract(existing);
-          setDiscountRate(existing.shambit_discount_rate || '0.00');
+          try {
+            const parsed = JSON.parse(existing.shambit_discount_rate || '{}');
+            if (typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+              setRoomDiscounts(parsed);
+            } else {
+              throw new Error('Legacy or empty');
+            }
+          } catch {
+            const legacyVal = existing.shambit_discount_rate || '0.00';
+            const initialMap: Record<string, RoomDiscountConfig> = {};
+            property.room_types?.forEach(rt => {
+              initialMap[rt.id.toString()] = { value: legacyVal, type: 'PERCENTAGE' };
+            });
+            setRoomDiscounts(initialMap);
+          }
+        } else {
+          const initialMap: Record<string, RoomDiscountConfig> = {};
+          property.room_types?.forEach(rt => {
+            initialMap[rt.id.toString()] = { value: '0.00', type: 'PERCENTAGE' };
+          });
+          setRoomDiscounts(initialMap);
         }
       } catch (err) {
         console.error(err);
@@ -39,14 +60,14 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
       }
     };
     fetchContract();
-  }, [property.id]);
+  }, [property.id, property.room_types]);
 
   const handleSave = async () => {
     try {
       setSaving(true);
       const payload: Partial<B2BContract> = {
         hotel: property.id,
-        shambit_discount_rate: discountRate,
+        shambit_discount_rate: JSON.stringify(roomDiscounts),
       };
 
       if (contract?.id) {
@@ -58,7 +79,7 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
           commission_type: 'PERCENTAGE',
           value: '0.00',
           pax_matrix_json: null,
-          shambit_discount_rate: discountRate,
+          shambit_discount_rate: JSON.stringify(roomDiscounts),
           shambit_profit_margin: '0.00',
           is_active: true,
         };
@@ -100,69 +121,78 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
           </div>
         </CardHeader>
         <CardContent className="p-8 space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                Negotiated Discount Rate (%)
-              </label>
-              <div className="relative">
-                <Input 
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  value={discountRate}
-                  onChange={(e) => {
-                    let val = parseFloat(e.target.value);
-                    if (val > 100) val = 100;
-                    if (val < 0) val = 0;
-                    setDiscountRate(isNaN(val) ? e.target.value : val.toString());
-                  }}
-                  className="h-14 text-lg font-black pl-4 pr-12 rounded-xl"
-                  placeholder="e.g. 20.00"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">%</span>
-              </div>
-              <p className="text-xs text-gray-500 font-medium mt-2">
-                Enter a percentage (0-100) representing the wholesale discount ShamBit receives from the hotel on the public B2C price. Example: 20 for a 20% discount.
-              </p>
-            </div>
-          </div>
+          <div className="overflow-x-auto rounded-xl border border-gray-200">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="p-4 border-b border-r border-gray-200 text-xs font-black uppercase tracking-widest text-gray-500">Room Type</th>
+                  <th className="p-4 border-b border-r border-gray-200 text-xs font-black uppercase tracking-widest text-gray-500 text-right">B2C Price</th>
+                  <th className="p-4 border-b border-r border-gray-200 text-xs font-black uppercase tracking-widest text-gray-500">Discount Type</th>
+                  <th className="p-4 border-b border-r border-gray-200 text-xs font-black uppercase tracking-widest text-gray-500">Value</th>
+                  <th className="p-4 border-b border-r border-gray-200 text-xs font-black uppercase tracking-widest text-emerald-600 text-right">Negotiated Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(property.room_types || []).map(room => {
+                  const b2cPrice = parseFloat(room.base_price_per_night) || 0;
+                  const discountConfig = roomDiscounts[room.id.toString()] || { value: '0.00', type: 'PERCENTAGE' };
+                  const discountVal = parseFloat(discountConfig.value) || 0;
+                  
+                  let negotiatedPrice = b2cPrice;
+                  if (discountConfig.type === 'PERCENTAGE') {
+                    negotiatedPrice = b2cPrice - (b2cPrice * (discountVal / 100));
+                  } else {
+                    negotiatedPrice = b2cPrice - discountVal;
+                  }
+                  if (negotiatedPrice < 0) negotiatedPrice = 0;
 
-          {/* Pricing Preview Table */}
-          <div className="mt-8 border-t border-gray-100 pt-8">
-            <h3 className="text-sm font-black uppercase text-gray-900 tracking-tight mb-4">Pricing Preview (Per Room Type)</h3>
-            <div className="overflow-x-auto rounded-xl border border-gray-200">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="p-4 border-b border-r border-gray-200 text-xs font-black uppercase tracking-widest text-gray-500">Room Type</th>
-                    <th className="p-4 border-b border-r border-gray-200 text-xs font-black uppercase tracking-widest text-gray-500 text-right">B2C Price</th>
-                    <th className="p-4 border-b border-r border-gray-200 text-xs font-black uppercase tracking-widest text-emerald-600 text-right">Negotiated Rate</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(property.room_types || []).map(room => {
-                    const b2cPrice = parseFloat(room.base_price_per_night) || 0;
-                    const discount = parseFloat(discountRate) || 0;
-                    const negotiatedPrice = b2cPrice - (b2cPrice * (discount / 100));
-                    return (
-                      <tr key={room.id} className="border-b border-gray-200 hover:bg-gray-50/50">
-                        <td className="p-4 border-r border-gray-200">
-                          <p className="text-sm font-bold text-gray-900">{room.room_name}</p>
-                        </td>
-                        <td className="p-4 border-r border-gray-200 text-right">
-                          <p className="text-sm font-medium text-gray-600">₹{b2cPrice.toFixed(2)}</p>
-                        </td>
-                        <td className="p-4 border-r border-gray-200 text-right">
-                          <p className="text-sm font-black text-emerald-700">₹{negotiatedPrice.toFixed(2)}</p>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  return (
+                    <tr key={room.id} className="border-b border-gray-200 hover:bg-gray-50/50">
+                      <td className="p-4 border-r border-gray-200">
+                        <p className="text-sm font-bold text-gray-900">{room.room_name}</p>
+                      </td>
+                      <td className="p-4 border-r border-gray-200 text-right">
+                        <p className="text-sm font-medium text-gray-600">₹{b2cPrice.toFixed(2)}</p>
+                      </td>
+                      <td className="p-4 border-r border-gray-200">
+                        <select
+                          value={discountConfig.type}
+                          onChange={(e) => {
+                            setRoomDiscounts(prev => ({
+                              ...prev,
+                              [room.id]: { ...discountConfig, type: e.target.value as 'PERCENTAGE' | 'FLAT' }
+                            }));
+                          }}
+                          className="w-full rounded-lg border border-gray-200 text-sm font-semibold h-10 px-3 bg-white"
+                        >
+                          <option value="PERCENTAGE">Percentage (%)</option>
+                          <option value="FLAT">Flat Rate (₹)</option>
+                        </select>
+                      </td>
+                      <td className="p-4 border-r border-gray-200">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={discountConfig.value}
+                          onChange={(e) => {
+                            setRoomDiscounts(prev => ({
+                              ...prev,
+                              [room.id]: { ...discountConfig, value: e.target.value }
+                            }));
+                          }}
+                          className="h-10 text-sm font-bold w-32"
+                          placeholder="e.g. 20.00"
+                        />
+                      </td>
+                      <td className="p-4 border-r border-gray-200 text-right">
+                        <p className="text-sm font-black text-emerald-700">₹{negotiatedPrice.toFixed(2)}</p>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
           <div className="flex justify-between items-center pt-6 border-t border-gray-100">

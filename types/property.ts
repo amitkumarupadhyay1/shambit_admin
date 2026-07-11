@@ -166,6 +166,9 @@ export interface B2BContract {
     tax_application?: TaxApplicationType;
     agent_deduction_strategy?: AgentDeductionStrategy;
     is_active: boolean;
+    hotel_gst_rate?: string;
+    shambit_profit_gst_rate?: string;
+    agent_commission_gst_rate?: string;
     created_at?: string;
     updated_at?: string;
 }

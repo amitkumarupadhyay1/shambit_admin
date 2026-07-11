@@ -29,11 +29,11 @@ export interface DashboardStats {
 }
 
 export const getSystemHealth = async (): Promise<SystemHealth> => {
-  const { data } = await api.get<SystemHealth>('/health/');
+  const { data } = await api.get<SystemHealth>('/ready/');
   return data;
 };
 
 export const getDashboardStats = async (): Promise<DashboardStats> => {
-  const { data } = await api.get<DashboardStats>('/users/admin/dashboard-stats/');
+  const { data } = await api.get<DashboardStats>('/auth/admin/dashboard-stats/');
   return data;
 };
