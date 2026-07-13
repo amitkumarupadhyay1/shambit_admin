@@ -142,7 +142,7 @@ export interface HotelPartnerProperty {
     updated_at: string;
 }
 
-export type B2BCommissionType = 'PERCENTAGE' | 'FLAT' | 'PAX_MATRIX';
+export type B2BCommissionType = 'PERCENTAGE' | 'FLAT';
 
 export interface PaxMatrixData {
     columns: string[];
@@ -159,8 +159,7 @@ export interface B2BContract {
     hotel: number;
     commission_type: B2BCommissionType;
     value: string;
-    pax_matrix_json: PaxMatrixData | null;
-    shambit_discount_rate: string;
+    shambit_discount_rate: Record<string, {value: string, type: 'PERCENTAGE' | 'FLAT'}>;
     shambit_profit_margin: string;
     profit_margin_type?: ProfitMarginType;
     tax_application?: TaxApplicationType;

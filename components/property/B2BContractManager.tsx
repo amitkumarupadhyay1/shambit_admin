@@ -33,7 +33,6 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
   
   const [waterfallData, setWaterfallData] = useState<B2BPreviewRow[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [paxMatrixRaw, setPaxMatrixRaw] = useState<string>('{\n  "columns": ["Low Season", "High Season"],\n  "rows": ["1 Pax", "2 Pax"],\n  "data": {\n    "1 Pax": { "Low Season": 10, "High Season": 15 },\n    "2 Pax": { "Low Season": 15, "High Season": 20 }\n  }\n}');
 
   const fetchData = React.useCallback(async () => {
     try {
@@ -57,15 +56,11 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
         setShambitProfitGstRate(existing.shambit_profit_gst_rate?.toString() || '18.00');
         setAgentCommissionGstRate(existing.agent_commission_gst_rate?.toString() || '18.00');
         setIsActive(existing.is_active);
-        if (existing.pax_matrix_json) {
-          setPaxMatrixRaw(JSON.stringify(existing.pax_matrix_json, null, 2));
-        }
       }
 
 
 
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error('Failed to load B2B Contract details');
     } finally {
       setLoading(false);
@@ -83,7 +78,7 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
       setPreviewLoading(true);
       const payload: B2BPreviewPayload = {
         hotel_id: targetHotelId,
-        shambit_discount_rate: contract?.shambit_discount_rate || '0.00',
+        shambit_discount_rate: '0.00',
         shambit_profit_margin: shambitProfitMargin,
         profit_margin_type: profitMarginType,
         commission_type: commissionType,
@@ -99,33 +94,25 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
         const flatRows = res.matrices.flat();
         setWaterfallData(flatRows);
       }
-    } catch (e) {
-      console.error("Preview fetch error", e);
+    } catch {
+      // Silently catch preview fetch errors
     } finally {
       setPreviewLoading(false);
     }
-  }, [targetHotelId, contract, shambitProfitMargin, profitMarginType, commissionType, commissionValue, taxApplication, agentDeductionStrategy]);
+  }, [targetHotelId, shambitProfitMargin, profitMarginType, commissionType, commissionValue, taxApplication, agentDeductionStrategy]);
 
   useEffect(() => {
-    // Only fetch preview if data is loaded
     if (!loading) {
-      fetchPreview();
+      const handler = setTimeout(() => {
+        fetchPreview();
+      }, 500);
+      return () => clearTimeout(handler);
     }
   }, [fetchPreview, loading]);
 
   const handleSave = async () => {
     try {
       setSaving(true);
-      let parsedPaxMatrix = null;
-      if (commissionType === 'PAX_MATRIX') {
-        try {
-          parsedPaxMatrix = JSON.parse(paxMatrixRaw);
-        } catch {
-          toast.error('Invalid JSON in Pax Matrix');
-          setSaving(false);
-          return;
-        }
-      }
 
       if (!targetHotelId) {
         toast.error('Property must be approved before saving B2B contract');
@@ -144,7 +131,6 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
         hotel_gst_rate: hotelGstRate,
         shambit_profit_gst_rate: shambitProfitGstRate,
         agent_commission_gst_rate: agentCommissionGstRate,
-        pax_matrix_json: parsedPaxMatrix,
         is_active: isActive,
       };
 
@@ -155,7 +141,7 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
       } else {
         const newPayload: B2BContract = {
           hotel: targetHotelId,
-          shambit_discount_rate: '0.00',
+          shambit_discount_rate: {},
           shambit_profit_margin: shambitProfitMargin,
           profit_margin_type: profitMarginType,
           commission_type: commissionType,
@@ -165,7 +151,6 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
           hotel_gst_rate: hotelGstRate,
           shambit_profit_gst_rate: shambitProfitGstRate,
           agent_commission_gst_rate: agentCommissionGstRate,
-          pax_matrix_json: parsedPaxMatrix,
           is_active: isActive,
         };
         const savedContract = await adminPropertyService.createB2BContract(newPayload);
@@ -173,8 +158,7 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
         toast.success('B2B Contract created');
       }
       if (onNext) onNext();
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error('Failed to save B2B Contract');
     } finally {
       setSaving(false);
@@ -277,7 +261,6 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
               >
                 <option value="PERCENTAGE">Percentage (%)</option>
                 <option value="FLAT">Flat Rate (₹)</option>
-                <option value="PAX_MATRIX">Pax Matrix</option>
               </select>
             </div>
             
@@ -356,18 +339,6 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
             </div>
           </div>
 
-          {commissionType === 'PAX_MATRIX' && (
-            <div className="mt-8 border-t border-gray-100 pt-8">
-              <h3 className="text-sm font-black uppercase text-gray-900 tracking-tight mb-2">Pax Matrix Configuration</h3>
-              <p className="text-xs font-medium text-gray-500 mb-4">Dynamically adjust margins based on guest count and season.</p>
-              <textarea 
-                className="w-full h-48 p-4 font-mono text-sm border border-gray-200 rounded-xl focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                value={paxMatrixRaw}
-                onChange={(e) => setPaxMatrixRaw(e.target.value)}
-                placeholder="Enter Pax Matrix JSON"
-              />
-            </div>
-          )}
 
           {/* Read-Only Transparency Grid */}
           <div className="mt-8 border-t border-gray-100 pt-8">

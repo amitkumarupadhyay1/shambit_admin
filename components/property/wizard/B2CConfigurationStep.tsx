@@ -25,23 +25,26 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
 
   useEffect(() => {
     const fetchContract = async () => {
+      if (!property.promoted_hotel) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
-        const existing = await adminPropertyService.getB2BContract(property.id);
+        const existing = await adminPropertyService.getB2BContract(property.promoted_hotel);
         if (existing) {
           setContract(existing);
           try {
-            const parsed = JSON.parse(existing.shambit_discount_rate || '{}');
+            const parsed = existing.shambit_discount_rate || {};
             if (typeof parsed === 'object' && Object.keys(parsed).length > 0) {
               setRoomDiscounts(parsed);
             } else {
               throw new Error('Legacy or empty');
             }
           } catch {
-            const legacyVal = existing.shambit_discount_rate || '0.00';
             const initialMap: Record<string, RoomDiscountConfig> = {};
             property.room_types?.forEach(rt => {
-              initialMap[rt.id.toString()] = { value: legacyVal, type: 'PERCENTAGE' };
+              initialMap[rt.id.toString()] = { value: '0.00', type: 'PERCENTAGE' };
             });
             setRoomDiscounts(initialMap);
           }
@@ -52,22 +55,22 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
           });
           setRoomDiscounts(initialMap);
         }
-      } catch (err) {
-        console.error(err);
+      } catch {
         toast.error('Failed to load B2B Contract details');
       } finally {
         setLoading(false);
       }
     };
     fetchContract();
-  }, [property.id, property.room_types]);
+  }, [property.promoted_hotel, property.room_types]);
 
   const handleSave = async () => {
     try {
       setSaving(true);
+      if (!property.promoted_hotel) throw new Error("Property must be promoted first.");
       const payload: Partial<B2BContract> = {
-        hotel: property.id,
-        shambit_discount_rate: JSON.stringify(roomDiscounts),
+        hotel: property.promoted_hotel,
+        shambit_discount_rate: roomDiscounts,
       };
 
       if (contract?.id) {
@@ -75,11 +78,10 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
         toast.success('B2B Contract updated');
       } else {
         const newPayload: B2BContract = {
-          hotel: property.id,
+          hotel: property.promoted_hotel,
           commission_type: 'PERCENTAGE',
           value: '0.00',
-          pax_matrix_json: null,
-          shambit_discount_rate: JSON.stringify(roomDiscounts),
+          shambit_discount_rate: roomDiscounts,
           shambit_profit_margin: '0.00',
           is_active: true,
         };
@@ -88,8 +90,7 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
         toast.success('B2B Contract created');
       }
       if (onNext) onNext();
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error('Failed to save B2B Contract');
     } finally {
       setSaving(false);
