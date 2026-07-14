@@ -181,7 +181,7 @@ export interface AdminPropertyListResponse {
 
 export interface B2BPreviewPayload {
     hotel_id: number;
-    shambit_discount_rate: string;
+    shambit_discount_rate: Record<string, {value: string, type: 'PERCENTAGE' | 'FLAT'}> | string;
     shambit_profit_margin: string;
     profit_margin_type: ProfitMarginType;
     commission_type: B2BCommissionType;

@@ -78,7 +78,7 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
       setPreviewLoading(true);
       const payload: B2BPreviewPayload = {
         hotel_id: targetHotelId,
-        shambit_discount_rate: '0.00',
+        shambit_discount_rate: contract?.shambit_discount_rate || {},
         shambit_profit_margin: shambitProfitMargin,
         profit_margin_type: profitMarginType,
         commission_type: commissionType,
@@ -99,7 +99,7 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
     } finally {
       setPreviewLoading(false);
     }
-  }, [targetHotelId, shambitProfitMargin, profitMarginType, commissionType, commissionValue, taxApplication, agentDeductionStrategy]);
+  }, [targetHotelId, contract, shambitProfitMargin, profitMarginType, commissionType, commissionValue, taxApplication, agentDeductionStrategy]);
 
   useEffect(() => {
     if (!loading) {
@@ -304,17 +304,7 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
             <div className="space-y-2 border-t border-gray-100 pt-6 mt-2 col-span-full">
                <h3 className="text-sm font-black uppercase text-gray-900 tracking-tight">GST Tax Rates</h3>
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Hotel GST (%)</label>
-              <Input 
-                type="number"
-                step="0.01"
-                value={hotelGstRate}
-                onChange={(e) => setHotelGstRate(e.target.value)}
-                className="h-12 font-bold text-sm rounded-xl"
-                placeholder="e.g. 12.00"
-              />
-            </div>
+
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">ShamBit Profit GST (%)</label>
               <Input 
@@ -392,29 +382,29 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
                         {row.is_sub_row ? <span className="ml-4 flex items-center gap-1 text-gray-400">↳ <span className="font-medium">{row.room_type}</span></span> : row.room_type}
                       </td>
                       <td className="p-4 border-r border-gray-200 font-bold text-sm text-gray-600">{row.meal_plan}</td>
-                      <td className="p-4 border-r border-gray-200 text-right text-sm font-medium">₹{row.b2c_price.toFixed(2)}</td>
-                      <td className={`p-4 border-r border-gray-200 text-right text-sm font-medium text-gray-600 ${row.is_sub_row ? 'bg-transparent' : 'bg-blue-50/30'}`}>₹{row.hotel_net.toFixed(2)}</td>
-                      <td className={`p-4 border-r border-gray-200 text-right text-sm font-medium text-blue-600 ${row.is_sub_row ? 'bg-transparent' : 'bg-blue-50/30'}`}>+ ₹{row.profit.toFixed(2)}</td>
+                      <td className="p-4 border-r border-gray-200 text-right text-sm font-medium">₹{(row.b2c_price ?? 0).toFixed(2)}</td>
+                      <td className={`p-4 border-r border-gray-200 text-right text-sm font-medium text-gray-600 ${row.is_sub_row ? 'bg-transparent' : 'bg-blue-50/30'}`}>₹{(row.hotel_net ?? 0).toFixed(2)}</td>
+                      <td className={`p-4 border-r border-gray-200 text-right text-sm font-medium text-blue-600 ${row.is_sub_row ? 'bg-transparent' : 'bg-blue-50/30'}`}>+ ₹{(row.profit ?? 0).toFixed(2)}</td>
                       
                       {agentDeductionStrategy === 'ADD_TO_SELLING_PRICE' ? (
                         <>
-                          <td className={`p-4 border-r border-gray-200 text-right text-sm font-bold text-indigo-600 ${row.is_sub_row ? 'bg-transparent' : 'bg-indigo-50/30'}`}>+ ₹{row.agent_tac.toFixed(2)}</td>
-                          <td className={`p-4 border-r border-gray-200 text-right text-sm font-black text-gray-900 ${row.is_sub_row ? 'bg-transparent' : 'bg-amber-50/30'}`}>₹{row.final_b2b_selling.toFixed(2)}</td>
-                          <td className={`p-4 text-right text-sm font-black ${row.is_sub_row ? 'bg-transparent' : 'bg-emerald-50/30'} ${row.net_shambit_profit < 0 ? 'text-red-600 bg-red-50' : 'text-emerald-700'}`}>
+                          <td className={`p-4 border-r border-gray-200 text-right text-sm font-bold text-indigo-600 ${row.is_sub_row ? 'bg-transparent' : 'bg-indigo-50/30'}`}>+ ₹{(row.agent_tac ?? 0).toFixed(2)}</td>
+                          <td className={`p-4 border-r border-gray-200 text-right text-sm font-black text-gray-900 ${row.is_sub_row ? 'bg-transparent' : 'bg-amber-50/30'}`}>₹{(row.final_b2b_selling ?? 0).toFixed(2)}</td>
+                          <td className={`p-4 text-right text-sm font-black ${row.is_sub_row ? 'bg-transparent' : 'bg-emerald-50/30'} ${(row.net_shambit_profit ?? 0) < 0 ? 'text-red-600 bg-red-50' : 'text-emerald-700'}`}>
                             <div className="flex items-center justify-end gap-1">
-                                {row.net_shambit_profit < 0 && <AlertCircle className="w-4 h-4 text-red-600" />}
-                                ₹{row.net_shambit_profit.toFixed(2)}
+                                {(row.net_shambit_profit ?? 0) < 0 && <AlertCircle className="w-4 h-4 text-red-600" />}
+                                ₹{(row.net_shambit_profit ?? 0).toFixed(2)}
                             </div>
                           </td>
                         </>
                       ) : (
                         <>
-                          <td className={`p-4 border-r border-gray-200 text-right text-sm font-black text-gray-900 ${row.is_sub_row ? 'bg-transparent' : 'bg-amber-50/30'}`}>₹{row.final_b2b_selling.toFixed(2)}</td>
-                          <td className={`p-4 border-r border-gray-200 text-right text-sm font-bold text-indigo-600 ${row.is_sub_row ? 'bg-transparent' : 'bg-indigo-50/30'}`}>- ₹{row.agent_tac.toFixed(2)}</td>
-                          <td className={`p-4 text-right text-sm font-black ${row.is_sub_row ? 'bg-transparent' : 'bg-emerald-50/30'} ${row.net_shambit_profit < 0 ? 'text-red-600 bg-red-50' : 'text-emerald-700'}`}>
+                          <td className={`p-4 border-r border-gray-200 text-right text-sm font-black text-gray-900 ${row.is_sub_row ? 'bg-transparent' : 'bg-amber-50/30'}`}>₹{(row.final_b2b_selling ?? 0).toFixed(2)}</td>
+                          <td className={`p-4 border-r border-gray-200 text-right text-sm font-bold text-indigo-600 ${row.is_sub_row ? 'bg-transparent' : 'bg-indigo-50/30'}`}>- ₹{(row.agent_tac ?? 0).toFixed(2)}</td>
+                          <td className={`p-4 text-right text-sm font-black ${row.is_sub_row ? 'bg-transparent' : 'bg-emerald-50/30'} ${(row.net_shambit_profit ?? 0) < 0 ? 'text-red-600 bg-red-50' : 'text-emerald-700'}`}>
                             <div className="flex items-center justify-end gap-1">
-                                {row.net_shambit_profit < 0 && <AlertCircle className="w-4 h-4 text-red-600" />}
-                                ₹{row.net_shambit_profit.toFixed(2)}
+                                {(row.net_shambit_profit ?? 0) < 0 && <AlertCircle className="w-4 h-4 text-red-600" />}
+                                ₹{(row.net_shambit_profit ?? 0).toFixed(2)}
                             </div>
                           </td>
                         </>
