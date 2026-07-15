@@ -42,16 +42,18 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
               throw new Error('Legacy or empty');
             }
           } catch {
-            const initialMap: Record<string, RoomDiscountConfig> = {};
+            const initialMap: Record<string, RoomDiscountConfig> = { "global": { value: '0.00', type: 'PERCENTAGE' } };
             property.room_types?.forEach(rt => {
-              initialMap[rt.id.toString()] = { value: '0.00', type: 'PERCENTAGE' };
+              const key = rt.approved_room_type_id ? rt.approved_room_type_id.toString() : rt.id.toString();
+              initialMap[key] = { value: '0.00', type: 'PERCENTAGE' };
             });
             setRoomDiscounts(initialMap);
           }
         } else {
-          const initialMap: Record<string, RoomDiscountConfig> = {};
+          const initialMap: Record<string, RoomDiscountConfig> = { "global": { value: '0.00', type: 'PERCENTAGE' } };
           property.room_types?.forEach(rt => {
-            initialMap[rt.id.toString()] = { value: '0.00', type: 'PERCENTAGE' };
+            const key = rt.approved_room_type_id ? rt.approved_room_type_id.toString() : rt.id.toString();
+            initialMap[key] = { value: '0.00', type: 'PERCENTAGE' };
           });
           setRoomDiscounts(initialMap);
         }
@@ -134,9 +136,53 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
                 </tr>
               </thead>
               <tbody>
+                <tr className="border-b-2 border-blue-200 bg-blue-50/30">
+                  <td className="p-4 border-r border-gray-200">
+                    <p className="text-sm font-black text-blue-900">Global Hotel (Run of House)</p>
+                    <p className="text-[10px] font-bold text-blue-600 mt-1 uppercase tracking-wider">Fallback / Bulk Rate</p>
+                  </td>
+                  <td className="p-4 border-r border-gray-200 text-right">
+                    <p className="text-sm font-medium text-gray-400 italic">N/A</p>
+                  </td>
+                  <td className="p-4 border-r border-gray-200">
+                    <select
+                      value={roomDiscounts["global"]?.type || 'PERCENTAGE'}
+                      onChange={(e) => {
+                        setRoomDiscounts(prev => ({
+                          ...prev,
+                          "global": { ...(prev["global"] || {value: '0.00'}), type: e.target.value as 'PERCENTAGE' | 'FLAT' }
+                        }));
+                      }}
+                      className="w-full rounded-lg border border-blue-200 text-sm font-semibold h-10 px-3 bg-white"
+                    >
+                      <option value="PERCENTAGE">Percentage (%)</option>
+                      <option value="FLAT">Flat Rate (₹)</option>
+                    </select>
+                  </td>
+                  <td className="p-4 border-r border-gray-200">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={roomDiscounts["global"]?.value || '0.00'}
+                      onChange={(e) => {
+                        setRoomDiscounts(prev => ({
+                          ...prev,
+                          "global": { ...(prev["global"] || {type: 'PERCENTAGE'}), value: e.target.value }
+                        }));
+                      }}
+                      className="h-10 text-sm font-bold w-32 border-blue-200"
+                      placeholder="e.g. 20.00"
+                    />
+                  </td>
+                  <td className="p-4 text-right">
+                    <p className="text-[10px] font-bold text-gray-400 italic uppercase">Applied when specific room unknown</p>
+                  </td>
+                </tr>
                 {(property.room_types || []).map(room => {
                   const b2cPrice = parseFloat(room.base_price_per_night) || 0;
-                  const discountConfig = roomDiscounts[room.id.toString()] || { value: '0.00', type: 'PERCENTAGE' };
+                  const roomIdKey = room.approved_room_type_id ? room.approved_room_type_id.toString() : room.id.toString();
+                  const discountConfig = roomDiscounts[roomIdKey] || { value: '0.00', type: 'PERCENTAGE' };
                   const discountVal = parseFloat(discountConfig.value) || 0;
                   
                   let negotiatedPrice = b2cPrice;
@@ -161,7 +207,7 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
                           onChange={(e) => {
                             setRoomDiscounts(prev => ({
                               ...prev,
-                              [room.id]: { ...discountConfig, type: e.target.value as 'PERCENTAGE' | 'FLAT' }
+                              [roomIdKey]: { ...discountConfig, type: e.target.value as 'PERCENTAGE' | 'FLAT' }
                             }));
                           }}
                           className="w-full rounded-lg border border-gray-200 text-sm font-semibold h-10 px-3 bg-white"
@@ -179,7 +225,7 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
                           onChange={(e) => {
                             setRoomDiscounts(prev => ({
                               ...prev,
-                              [room.id]: { ...discountConfig, value: e.target.value }
+                              [roomIdKey]: { ...discountConfig, value: e.target.value }
                             }));
                           }}
                           className="h-10 text-sm font-bold w-32"
