@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { adminPropertyService } from '@/services/adminPropertyService';
-import type { HotelPartnerProperty, B2BContract } from '@/types/property';
+import type { HotelPartnerProperty, B2BContract, B2BRoomRatePlan } from '@/types/property';
 import { Loader2, ArrowRight, Save, TrendingDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -70,9 +70,23 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
     try {
       setSaving(true);
       if (!property.promoted_hotel) throw new Error("Property must be promoted first.");
+      const room_rate_plans: B2BRoomRatePlan[] = [];
+      Object.entries(roomDiscounts).forEach(([roomIdStr, config]) => {
+        if (roomIdStr !== "global") {
+          room_rate_plans.push({
+             room_type: parseInt(roomIdStr, 10),
+             rate_mode: config.type === 'FLAT' ? 'FLAT_DISCOUNT' : 'PERCENTAGE_DISCOUNT',
+             value: config.value,
+             is_active: true
+          });
+        }
+      });
+
       const payload: Partial<B2BContract> = {
         hotel: property.promoted_hotel,
         shambit_discount_rate: roomDiscounts,
+        room_rate_plans: room_rate_plans,
+        global_rate_plans: [], // To be managed by B2BGlobalRateManager later
       };
 
       if (contract?.id) {
@@ -86,6 +100,8 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
           shambit_discount_rate: roomDiscounts,
           shambit_profit_margin: '0.00',
           is_active: true,
+          room_rate_plans: room_rate_plans,
+          global_rate_plans: [],
         };
         const savedContract = await adminPropertyService.createB2BContract(newPayload);
         setContract(savedContract);

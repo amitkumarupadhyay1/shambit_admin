@@ -154,6 +154,39 @@ export type ProfitMarginType = 'PERCENTAGE' | 'FLAT';
 export type TaxApplicationType = 'PRE_TAX' | 'POST_TAX';
 export type AgentDeductionStrategy = 'DEDUCT_FROM_PROFIT' | 'ADD_TO_SELLING_PRICE';
 
+export interface B2BRoomRatePlan {
+    id?: number;
+    room_type: number;
+    rate_mode: 'PERCENTAGE_DISCOUNT' | 'FLAT_DISCOUNT' | 'FIXED_NET_RATE';
+    value: string;
+    effective_from?: string | null;
+    effective_to?: string | null;
+    is_active: boolean;
+}
+
+export interface B2BGlobalRateEligibleRoom {
+    id?: number;
+    room_type: number;
+    allocation_priority: number;
+    max_rooms_per_booking?: number | null;
+}
+
+export interface B2BGlobalRatePlan {
+    id?: number;
+    name: string;
+    is_active: boolean;
+    hotel_net_rate_per_room_per_night: string;
+    tax_percent: string;
+    min_rooms: number;
+    max_rooms?: number | null;
+    allocation_mode: 'AUTO_ALLOCATE' | 'MANUAL_CONFIRMATION';
+    effective_from?: string | null;
+    effective_to?: string | null;
+    blackout_dates: string[];
+    terms_and_conditions: string;
+    eligible_rooms: B2BGlobalRateEligibleRoom[];
+}
+
 export interface B2BContract {
     id?: number;
     hotel: number;
@@ -168,6 +201,8 @@ export interface B2BContract {
     hotel_gst_rate?: string;
     shambit_profit_gst_rate?: string;
     agent_commission_gst_rate?: string;
+    room_rate_plans?: B2BRoomRatePlan[];
+    global_rate_plans?: B2BGlobalRatePlan[];
     created_at?: string;
     updated_at?: string;
 }
