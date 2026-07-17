@@ -192,7 +192,7 @@ export interface B2BContract {
     hotel: number;
     commission_type: B2BCommissionType;
     value: string;
-    shambit_discount_rate: Record<string, {value: string, type: 'PERCENTAGE' | 'FLAT'}>;
+    shambit_discount_rate: Record<string, {value: string, type: 'PERCENTAGE' | 'FLAT' | 'FIXED_NET_RATE'}>;
     shambit_profit_margin: string;
     profit_margin_type?: ProfitMarginType;
     tax_application?: TaxApplicationType;
@@ -216,7 +216,7 @@ export interface AdminPropertyListResponse {
 
 export interface B2BPreviewPayload {
     hotel_id: number;
-    shambit_discount_rate: Record<string, {value: string, type: 'PERCENTAGE' | 'FLAT'}> | string;
+    shambit_discount_rate: Record<string, {value: string, type: 'PERCENTAGE' | 'FLAT' | 'FIXED_NET_RATE'}> | string;
     shambit_profit_margin: string;
     profit_margin_type: ProfitMarginType;
     commission_type: B2BCommissionType;

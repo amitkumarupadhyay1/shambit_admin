@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/Input';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { bookingsService } from '@/services/bookings';
 import type { AdminBookingListResponse, AdminHotelBooking, AdminRefundProcessResponse } from '@/types/booking';
+import B2BManualAllocationPanel from '@/components/bookings/B2BManualAllocationPanel';
 
 const statusOptions = [
   'ALL',
@@ -158,6 +159,8 @@ export default function BookingsPage() {
           </CardHeader>
         </Card>
       </div>
+
+      <B2BManualAllocationPanel />
 
       <Card>
         <CardHeader className="space-y-4">

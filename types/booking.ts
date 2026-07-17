@@ -60,3 +60,34 @@ export interface AdminRefundProcessResponse {
   cancellation_fee_gst_rate?: string;
   gateway_fee_loss_estimate?: string;
 }
+
+export interface B2BManualEligibleRoom {
+  room_type_id: number;
+  name: string;
+  max_adults: number;
+  available_rooms: number;
+  max_rooms_per_booking: number | null;
+  allocation_priority: number;
+}
+
+export interface B2BManualOrder {
+  booking_reference: string;
+  hotel_name: string;
+  agency_name: string;
+  agent_email: string;
+  check_in: string;
+  check_out: string;
+  total_rooms: number;
+  total_guests: number;
+  primary_guest_name: string;
+  contact_email: string;
+  global_rate_plan: string;
+  b2b_selling_total: string;
+  created_at: string;
+  eligible_rooms: B2BManualEligibleRoom[];
+}
+
+export interface B2BRoomAllocationInput {
+  room_type_id: number;
+  quantity: number;
+}

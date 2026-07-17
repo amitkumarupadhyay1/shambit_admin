@@ -20,7 +20,7 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
   const [saving, setSaving] = useState(false);
   const [contract, setContract] = useState<B2BContract | null>(null);
   
-  type RoomDiscountConfig = { value: string; type: 'PERCENTAGE' | 'FLAT' };
+  type RoomDiscountConfig = { value: string; type: 'PERCENTAGE' | 'FLAT' | 'FIXED_NET_RATE' };
   const [roomDiscounts, setRoomDiscounts] = useState<Record<string, RoomDiscountConfig>>({});
 
   useEffect(() => {
@@ -75,7 +75,7 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
         if (roomIdStr !== "global") {
           room_rate_plans.push({
              room_type: parseInt(roomIdStr, 10),
-             rate_mode: config.type === 'FLAT' ? 'FLAT_DISCOUNT' : 'PERCENTAGE_DISCOUNT',
+             rate_mode: config.type === 'FLAT' ? 'FLAT_DISCOUNT' : config.type === 'FIXED_NET_RATE' ? 'FIXED_NET_RATE' : 'PERCENTAGE_DISCOUNT',
              value: config.value,
              is_active: true
           });
@@ -166,13 +166,14 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
                       onChange={(e) => {
                         setRoomDiscounts(prev => ({
                           ...prev,
-                          "global": { ...(prev["global"] || {value: '0.00'}), type: e.target.value as 'PERCENTAGE' | 'FLAT' }
+                          "global": { ...(prev["global"] || {value: '0.00'}), type: e.target.value as 'PERCENTAGE' | 'FLAT' | 'FIXED_NET_RATE' }
                         }));
                       }}
                       className="w-full rounded-lg border border-blue-200 text-sm font-semibold h-10 px-3 bg-white"
                     >
                       <option value="PERCENTAGE">Percentage (%)</option>
                       <option value="FLAT">Flat Rate (₹)</option>
+                      <option value="FIXED_NET_RATE">Fixed Net Rate (₹)</option>
                     </select>
                   </td>
                   <td className="p-4 border-r border-gray-200">
@@ -204,8 +205,10 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
                   let negotiatedPrice = b2cPrice;
                   if (discountConfig.type === 'PERCENTAGE') {
                     negotiatedPrice = b2cPrice - (b2cPrice * (discountVal / 100));
-                  } else {
+                  } else if (discountConfig.type === 'FLAT') {
                     negotiatedPrice = b2cPrice - discountVal;
+                  } else if (discountConfig.type === 'FIXED_NET_RATE') {
+                    negotiatedPrice = discountVal;
                   }
                   if (negotiatedPrice < 0) negotiatedPrice = 0;
 
@@ -223,13 +226,14 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
                           onChange={(e) => {
                             setRoomDiscounts(prev => ({
                               ...prev,
-                              [roomIdKey]: { ...discountConfig, type: e.target.value as 'PERCENTAGE' | 'FLAT' }
+                              [roomIdKey]: { ...discountConfig, type: e.target.value as 'PERCENTAGE' | 'FLAT' | 'FIXED_NET_RATE' }
                             }));
                           }}
                           className="w-full rounded-lg border border-gray-200 text-sm font-semibold h-10 px-3 bg-white"
                         >
                           <option value="PERCENTAGE">Percentage (%)</option>
                           <option value="FLAT">Flat Rate (₹)</option>
+                          <option value="FIXED_NET_RATE">Fixed Net Rate (₹)</option>
                         </select>
                       </td>
                       <td className="p-4 border-r border-gray-200">
