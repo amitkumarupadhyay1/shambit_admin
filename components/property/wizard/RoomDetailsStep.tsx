@@ -32,6 +32,12 @@ export default function RoomDetailsStep({ property, onNext }: Props) {
               <p className="text-sm font-bold text-gray-900">{property.property_type}</p>
             </div>
             <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Pricing Model</p>
+              <p className="text-sm font-bold text-gray-900">
+                {property.pricing_mode === 'A_LA_CARTE_MEAL' ? 'Price per person' : 'Room rate plans'}
+              </p>
+            </div>
+            <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Star Rating</p>
               <p className="text-sm font-bold text-gray-900">{property.star_rating} Stars</p>
             </div>
@@ -95,6 +101,48 @@ export default function RoomDetailsStep({ property, onNext }: Props) {
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Max Capacity</p>
                     <p className="text-sm font-bold text-gray-900">{room.max_adults}A + {room.max_children}C</p>
                   </div>
+                </div>
+
+                <div className="pt-6 border-t border-gray-100">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                    {room.pricing_mode === 'A_LA_CARTE_MEAL' ? 'À-la-carte meal pricing' : 'Customer rate plans'}
+                  </p>
+                  {room.pricing_mode === 'ROOM_RATE_PLAN' ? (
+                    room.rate_plans?.length ? (
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {room.rate_plans.map((plan) => (
+                          <div key={plan.id} className="rounded-xl border border-blue-100 bg-blue-50/50 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-sm font-black text-gray-900">{plan.name}</span>
+                              <span className="text-[10px] font-black uppercase text-blue-700">{plan.code}</span>
+                            </div>
+                            <p className="mt-1 text-xs font-medium text-gray-600">
+                              {plan.adjustment_type === 'NONE' ? 'Base room price' : `${plan.adjustment_type}: ${plan.adjustment_value}`}
+                              {plan.meal_plan ? ` • ${plan.meal_plan.name}` : ''}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm font-semibold text-amber-700">No active customer rate plans configured.</p>
+                    )
+                  ) : room.meal_plans?.length ? (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {room.meal_plans.map((config) => (
+                        <div key={config.id} className="rounded-xl border border-orange-100 bg-orange-50/50 p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm font-black text-gray-900">{config.meal_plan.name}</span>
+                            <span className="text-[10px] font-black uppercase text-orange-700">{config.meal_plan.code}</span>
+                          </div>
+                          <p className="mt-1 text-xs font-medium text-gray-600">
+                            Adult ₹{config.adult_price} • Child ₹{config.child_price} • Infant ₹{config.infant_price}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm font-semibold text-amber-700">No active per-person meal plans configured.</p>
+                  )}
                 </div>
 
                 {room.amenities && room.amenities.length > 0 && (

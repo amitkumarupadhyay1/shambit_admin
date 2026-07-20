@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import type { HotelPartnerProperty, AdminPropertyListResponse, PanVerificationStatus, BankVerificationStatus, B2BContract, RoomTypeMealPlan, B2BPreviewPayload, B2BPreviewResponse } from '@/types/property';
+import type { HotelPartnerProperty, AdminPropertyListResponse, PanVerificationStatus, BankVerificationStatus, B2BContract, B2BContractDocument, B2BPreviewPayload, B2BPreviewResponse } from '@/types/property';
 export const adminPropertyService = {
   getProperties: async (filters?: {
     status?: string;
@@ -51,16 +51,33 @@ export const adminPropertyService = {
   },
 
   getB2BContract: async (hotelId: number): Promise<B2BContract | null> => {
-    try {
-      const response = await api.get<{ results: B2BContract[] }>(`/pricing/b2b/admin/contracts/?hotel=${hotelId}`);
-      if (response.data && response.data.results && response.data.results.length > 0) {
-        return response.data.results[0];
-      }
-      return null;
-    } catch (error) {
-      console.error('Failed to fetch B2B contract:', error);
-      return null;
-    }
+    const response = await api.get<{ results: B2BContract[] }>(`/pricing/b2b/admin/contracts/?hotel=${hotelId}`);
+    const contracts = response.data.results || [];
+    return contracts.find(contract => !contract.published_at && Boolean(contract.amendment_of))
+      ?? contracts.find(contract => contract.is_active)
+      ?? contracts[0]
+      ?? null;
+  },
+
+  beginB2BContractAmendment: async (id: number, changeReason: string): Promise<B2BContract> => {
+    const response = await api.post<B2BContract>(`/pricing/b2b/admin/contracts/${id}/begin_amendment/`, {
+      change_reason: changeReason,
+    });
+    return response.data;
+  },
+
+  suspendB2BContract: async (id: number, changeReason: string): Promise<B2BContract> => {
+    const response = await api.post<B2BContract>(`/pricing/b2b/admin/contracts/${id}/suspend/`, {
+      change_reason: changeReason,
+    });
+    return response.data;
+  },
+
+  downloadB2BSettledContractPdf: async (id: number): Promise<Blob> => {
+    const response = await api.get<Blob>(`/pricing/b2b/admin/contracts/${id}/settled_pdf/`, {
+      responseType: 'blob',
+    });
+    return response.data;
   },
 
   getB2BPreview: async (payload: B2BPreviewPayload): Promise<B2BPreviewResponse> => {
@@ -68,7 +85,7 @@ export const adminPropertyService = {
     return response.data;
   },
 
-  createB2BContract: async (data: B2BContract): Promise<B2BContract> => {
+  createB2BContract: async (data: Partial<B2BContract>): Promise<B2BContract> => {
     const response = await api.post<B2BContract>('/pricing/b2b/admin/contracts/', data);
     return response.data;
   },
@@ -78,14 +95,35 @@ export const adminPropertyService = {
     return response.data;
   },
 
-  getRoomMealPlans: async (roomTypeId: number): Promise<RoomTypeMealPlan[]> => {
-    const response = await api.get<{results: RoomTypeMealPlan[]}>(`/hotel-partners/partners/room-meal-plans/?room_type=${roomTypeId}`);
-    // fallback if no pagination
-    if (response.data && Array.isArray(response.data.results)) {
-      return response.data.results;
-    } else if (Array.isArray(response.data)) {
-      return response.data;
-    }
-    return [];
+  uploadB2BContractDocument: async (
+    contractId: number,
+    file: File,
+    documentType: 'SIGNED_CONTRACT' | 'ADDENDUM' | 'OTHER',
+    signedAt?: string,
+    changeReason?: string
+  ): Promise<B2BContractDocument> => {
+    const formData = new FormData();
+    formData.append('contract', String(contractId));
+    formData.append('document_type', documentType);
+    formData.append('file', file);
+    if (signedAt) formData.append('signed_at', signedAt);
+    if (changeReason) formData.append('change_reason', changeReason);
+    const response = await api.post<B2BContractDocument>('/pricing/b2b/admin/documents/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  deleteB2BContractDocument: async (documentId: number, changeReason: string): Promise<void> => {
+    await api.delete(`/pricing/b2b/admin/documents/${documentId}/`, {
+      data: { change_reason: changeReason },
+    });
+  },
+
+  downloadB2BContractDocument: async (documentId: number): Promise<Blob> => {
+    const response = await api.get<Blob>(`/pricing/b2b/admin/documents/${documentId}/download/`, {
+      responseType: 'blob',
+    });
+    return response.data;
   },
 };

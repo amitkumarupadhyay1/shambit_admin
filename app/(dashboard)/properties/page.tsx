@@ -119,6 +119,7 @@ export default function PropertiesPage() {
                     <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-gray-500">Property Details</th>
                     <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-gray-500">Partner</th>
                     <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-gray-500">Status</th>
+                    <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-gray-500">Global B2B Rate</th>
                     <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-gray-500">Location</th>
                     <th className="px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-gray-500 text-right">Action</th>
                   </tr>
@@ -149,6 +150,21 @@ export default function PropertiesPage() {
                         <Badge variant={STATUS_VARIANTS[property.status]}>
                           {property.status.replace('_', ' ')}
                         </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        {property.b2b_global_summary?.configured ? (
+                          <div className="space-y-1.5">
+                            {property.b2b_global_summary.rates.map((rate) => (
+                              <div key={rate.plan}>
+                                <p className="text-sm font-black text-emerald-700">₹{Number(rate.final_b2b_rate).toFixed(2)}</p>
+                                <p className="text-[10px] font-bold text-gray-500">{rate.plan} · per room/night</p>
+                              </div>
+                            ))}
+                            <p className={`text-[10px] font-black uppercase ${property.b2b_global_summary.status === 'PUBLISHED_TO_B2B_AGENTS' ? 'text-emerald-600' : 'text-amber-600'}`}>{property.b2b_global_summary.status.replaceAll('_', ' ')}</p>
+                          </div>
+                        ) : (
+                          <p className="max-w-40 text-xs font-bold text-amber-700">B2B global rate not configured</p>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-sm font-medium text-gray-700">{property.city_name}</p>

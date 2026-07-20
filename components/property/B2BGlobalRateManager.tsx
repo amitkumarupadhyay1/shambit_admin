@@ -88,9 +88,12 @@ export default function B2BGlobalRateManager({ property, contract, onChange }: P
             No global rate plans configured.
           </div>
         ) : globalRatePlans.map((plan, idx) => (
-          <div key={idx} className="p-6 border border-gray-200 rounded-xl bg-white shadow-sm space-y-4">
+          <div key={plan.id || `global-${idx}`} className="p-6 border border-gray-200 rounded-xl bg-white shadow-sm space-y-4">
             <div className="flex justify-between items-start">
-              <h4 className="font-bold text-gray-900">Rate Plan #{idx + 1}</h4>
+              <div>
+                <h4 className="font-bold text-gray-900">Rate Plan #{idx + 1}</h4>
+                <label className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-gray-600"><input type="checkbox" checked={plan.is_active} onChange={(e) => handleUpdate(idx, 'is_active', e.target.checked)} /> Enabled for agents</label>
+              </div>
               <Button variant="ghost" size="sm" onClick={() => handleRemove(idx)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
                 <Trash2 className="w-4 h-4" /> Remove
               </Button>
@@ -104,6 +107,14 @@ export default function B2BGlobalRateManager({ property, contract, onChange }: P
                   onChange={(e) => handleUpdate(idx, 'name', e.target.value)}
                   className="h-10 text-sm font-bold"
                 />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Valid From</label>
+                <Input type="date" value={plan.effective_from || ''} onChange={(e) => handleUpdate(idx, 'effective_from', e.target.value || null)} className="h-10 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Valid To</label>
+                <Input type="date" value={plan.effective_to || ''} onChange={(e) => handleUpdate(idx, 'effective_to', e.target.value || null)} className="h-10 text-sm" />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Net Rate (₹)</label>
@@ -187,61 +198,13 @@ export default function B2BGlobalRateManager({ property, contract, onChange }: P
                     )}
                  </div>
               </div>
-            </div>
-
-            {/* Rate Preview Table inside the global rate card */}
-            <div className="mt-4 border-t border-gray-100 pt-4">
-              <h5 className="text-[10px] font-black uppercase text-gray-400 mb-2">Rate Calculation Preview</h5>
-              <div className="overflow-x-auto rounded-xl border border-gray-200">
-                <table className="w-full text-left border-collapse min-w-[500px]">
-                  <thead>
-                    <tr className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-500">
-                      <th className="p-3 border-b border-r border-gray-200">Hotel Net</th>
-                      <th className="p-3 border-b border-r border-gray-200 text-right">+ ShamBit Profit</th>
-                      <th className="p-3 border-b border-r border-gray-200 text-right text-indigo-600">+ Agent TAC</th>
-                      <th className="p-3 border-b border-gray-200 text-right text-emerald-700">= Final B2B Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const base = parseFloat(plan.hotel_net_rate_per_room_per_night) || 0;
-                      // Simple preview logic based on current contract state
-                      let profit = 0;
-                      const profitVal = parseFloat(contract.shambit_profit_margin || '0');
-                      if (contract.profit_margin_type === 'PERCENTAGE') {
-                        profit = base * (profitVal / 100);
-                      } else {
-                        profit = profitVal;
-                      }
-
-                      let tac = 0;
-                      const tacVal = parseFloat(contract.value || '0');
-                      const baseForTac = contract.commission_type === 'PERCENTAGE' ? (base + profit) : 1;
-                      
-                      if (contract.commission_type === 'PERCENTAGE') {
-                         tac = baseForTac * (tacVal / 100);
-                      } else {
-                         tac = tacVal;
-                      }
-
-                      let finalPrice = base + profit;
-                      if (contract.agent_deduction_strategy === 'ADD_TO_SELLING_PRICE') {
-                        finalPrice += tac;
-                      }
-
-                      return (
-                        <tr>
-                          <td className="p-3 border-r border-gray-200 font-bold text-sm">₹{base.toFixed(2)}</td>
-                          <td className="p-3 border-r border-gray-200 text-right font-medium text-blue-600 text-sm">+ ₹{profit.toFixed(2)}</td>
-                          <td className="p-3 border-r border-gray-200 text-right font-medium text-indigo-600 text-sm">
-                            {contract.agent_deduction_strategy === 'DEDUCT_FROM_PROFIT' ? `- ₹${tac.toFixed(2)} (from profit)` : `+ ₹${tac.toFixed(2)}`}
-                          </td>
-                          <td className="p-3 text-right font-black text-emerald-700 text-sm">₹{finalPrice.toFixed(2)}</td>
-                        </tr>
-                      );
-                    })()}
-                  </tbody>
-                </table>
+              <div className="space-y-1 md:col-span-3 xl:col-span-5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Terms and Conditions</label>
+                <textarea value={plan.terms_and_conditions || ''} onChange={(e) => handleUpdate(idx, 'terms_and_conditions', e.target.value)} rows={3} className="w-full rounded-lg border border-gray-200 p-3 text-sm" placeholder="Bulk allocation, cancellation and confirmation terms" />
+              </div>
+              <div className="space-y-1 md:col-span-3 xl:col-span-5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Blackout Dates (comma-separated YYYY-MM-DD)</label>
+                <Input value={(plan.blackout_dates || []).join(', ')} onChange={(e) => handleUpdate(idx, 'blackout_dates', e.target.value.split(',').map(value => value.trim()).filter(Boolean))} className="h-10 text-sm" />
               </div>
             </div>
 

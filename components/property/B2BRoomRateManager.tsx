@@ -17,7 +17,9 @@ export default function B2BRoomRateManager({ property, contract, onChange }: Pro
   );
 
   const handleAdd = () => {
-    const defaultRoomId = synchronizedRooms[0]?.approved_room_type_id || 0;
+    const usedRoomIds = new Set(roomRatePlans.map(plan => Number(plan.room_type)));
+    const defaultRoomId = synchronizedRooms.find(room => !usedRoomIds.has(Number(room.approved_room_type_id)))?.approved_room_type_id || 0;
+    if (!defaultRoomId) return;
     const newPlan: B2BRoomRatePlan = {
       room_type: defaultRoomId,
       rate_mode: 'PERCENTAGE_DISCOUNT',
@@ -49,19 +51,21 @@ export default function B2BRoomRateManager({ property, contract, onChange }: Pro
           <h3 className="text-lg font-black text-gray-900 tracking-tight">Room-wise B2B Rates</h3>
           <p className="text-xs text-gray-500 font-medium mt-1">Configure specific net rates or discounts for individual rooms.</p>
         </div>
-        <Button onClick={handleAdd} size="sm" className="bg-blue-600 hover:bg-blue-700 font-bold gap-2">
+        <Button onClick={handleAdd} disabled={roomRatePlans.length >= synchronizedRooms.length} size="sm" className="bg-blue-600 hover:bg-blue-700 font-bold gap-2">
           <Plus className="w-4 h-4" />
           Add Rate Plan
         </Button>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200">
-        <table className="w-full text-left border-collapse min-w-[600px]">
+        <table className="w-full text-left border-collapse min-w-[900px]">
           <thead>
             <tr className="bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-500">
               <th className="p-4 border-b border-r border-gray-200">Room Type</th>
               <th className="p-4 border-b border-r border-gray-200">Rate Mode</th>
               <th className="p-4 border-b border-r border-gray-200">Value (₹/%)</th>
+              <th className="p-4 border-b border-r border-gray-200">Rate Valid From</th>
+              <th className="p-4 border-b border-r border-gray-200">Rate Valid To</th>
               <th className="p-4 border-b border-r border-gray-200 text-center">Status</th>
               <th className="p-4 border-b border-gray-200 text-right">Actions</th>
             </tr>
@@ -69,7 +73,7 @@ export default function B2BRoomRateManager({ property, contract, onChange }: Pro
           <tbody>
             {roomRatePlans.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-gray-500 text-sm font-medium">
+                <td colSpan={7} className="p-8 text-center text-gray-500 text-sm font-medium">
                   No room-wise rate plans configured.
                 </td>
               </tr>
@@ -82,9 +86,19 @@ export default function B2BRoomRateManager({ property, contract, onChange }: Pro
                     className="w-full rounded-lg border border-gray-200 text-sm font-semibold h-10 px-3 bg-white"
                   >
                     {synchronizedRooms.map(rt => (
-                      <option key={rt.id} value={rt.approved_room_type_id as number}>{rt.room_name}</option>
+                      <option
+                        key={rt.id}
+                        value={rt.approved_room_type_id as number}
+                        disabled={roomRatePlans.some((other, otherIndex) => otherIndex !== idx && Number(other.room_type) === Number(rt.approved_room_type_id))}
+                      >{rt.room_name}</option>
                     ))}
                   </select>
+                </td>
+                <td className="p-4 border-r border-gray-200">
+                  <Input type="date" value={plan.effective_from || ''} onChange={(e) => handleUpdate(idx, 'effective_from', e.target.value || null)} className="h-10 text-sm" />
+                </td>
+                <td className="p-4 border-r border-gray-200">
+                  <Input type="date" value={plan.effective_to || ''} onChange={(e) => handleUpdate(idx, 'effective_to', e.target.value || null)} className="h-10 text-sm" />
                 </td>
                 <td className="p-4 border-r border-gray-200">
                   <select

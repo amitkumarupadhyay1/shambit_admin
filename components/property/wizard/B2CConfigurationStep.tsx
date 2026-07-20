@@ -93,13 +93,13 @@ export default function B2CConfigurationStep({ property, onNext, onBack }: Props
         await adminPropertyService.updateB2BContract(contract.id, payload);
         toast.success('B2B Contract updated');
       } else {
-        const newPayload: B2BContract = {
+        const newPayload: Partial<B2BContract> = {
           hotel: property.promoted_hotel,
           commission_type: 'PERCENTAGE',
           value: '0.00',
           shambit_discount_rate: roomDiscounts,
           shambit_profit_margin: '0.00',
-          is_active: true,
+          is_active: false,
           room_rate_plans: room_rate_plans,
           global_rate_plans: [],
         };

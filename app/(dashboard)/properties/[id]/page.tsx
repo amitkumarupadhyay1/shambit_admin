@@ -8,7 +8,6 @@ import type { HotelPartnerProperty } from '@/types/property';
 import toast from 'react-hot-toast';
 
 import RoomDetailsStep from '@/components/property/wizard/RoomDetailsStep';
-import B2CConfigurationStep from '@/components/property/wizard/B2CConfigurationStep';
 import B2BContractManager from '@/components/property/B2BContractManager';
 import ComplianceStep from '@/components/property/wizard/ComplianceStep';
 import { cityService, type City } from '@/services/cityService';
@@ -66,9 +65,8 @@ export default function PropertyWizardPage() {
 
   const steps = [
     { id: 1, title: 'Room Details', desc: 'Property overview and capacities' },
-    { id: 2, title: 'B2C to Admin Configuration', desc: 'Negotiated price for ShamBit' },
-    { id: 3, title: 'Admin to Agent Settlement', desc: 'ShamBit profit and Agent TAC' },
-    { id: 4, title: 'Compliance & Legal', desc: 'Verify PAN, Bank & GST' },
+    { id: 2, title: 'B2B Contract', desc: 'Negotiated rates, settlement and signed agreement' },
+    { id: 3, title: 'Compliance & Legal', desc: 'Verify PAN, Bank & GST' },
   ];
 
   if (isLoading) {
@@ -95,11 +93,9 @@ export default function PropertyWizardPage() {
       case 1:
         return <RoomDetailsStep property={property} onNext={() => setCurrentStep(2)} />;
       case 2:
-        return <B2CConfigurationStep property={property} onNext={() => setCurrentStep(3)} onBack={() => setCurrentStep(1)} />;
+        return <B2BContractManager property={property} onNext={() => setCurrentStep(3)} onBack={() => setCurrentStep(1)} />;
       case 3:
-        return <B2BContractManager property={property} onNext={() => setCurrentStep(4)} onBack={() => setCurrentStep(2)} />;
-      case 4:
-        return <ComplianceStep property={property} onUpdate={setProperty} onBack={() => setCurrentStep(3)} />;
+        return <ComplianceStep property={property} onUpdate={setProperty} onBack={() => setCurrentStep(2)} />;
       default:
         return null;
     }
@@ -149,9 +145,9 @@ export default function PropertyWizardPage() {
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 font-bold text-sm">
-            <CheckCircle2 className="w-4 h-4" />
-            Live on Platform
+          <div className="max-w-sm rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-emerald-800">
+            <div className="flex items-center gap-2 text-sm font-bold"><CheckCircle2 className="w-4 h-4" />Property approved</div>
+            <p className="mt-1 text-xs font-medium">Approved for the ShamBit customer catalogue. B2B agent publication requires a separate active B2B contract.</p>
           </div>
         )}
       </div>

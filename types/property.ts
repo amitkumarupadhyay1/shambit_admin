@@ -5,7 +5,9 @@
 
 export type PropertyStatus = 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 
-export type PropertyType = 'HOTEL' | 'RESORT' | 'VILLA' | 'HOMESTAY' | 'HOSTEL' | 'GUESTHOUSE' | 'APARTMENT';
+export type PropertyType = 'HOTEL' | 'RESORT' | 'VILLA' | 'HOMESTAY' | 'HOSTEL' | 'GUESTHOUSE' | 'APARTMENT' | 'RESTAURANT' | 'GALLA_DINNER' | 'WEDDING_DESTINATION' | 'HALL_BOOKING';
+
+export type PricingMode = 'ROOM_RATE_PLAN' | 'A_LA_CARTE_MEAL';
 
 export type CommissionType = 'MARKUP' | 'DEDUCTION';
 
@@ -57,16 +59,33 @@ export interface HotelPartnerRoomType {
     image_urls: string[];
     photos: HotelPartnerPhoto[];
     approved_room_type_id?: number | null;
+    pricing_mode: PricingMode;
+    rate_plans: CustomerRatePlan[];
+    meal_plans: RoomTypeMealPlan[];
     created_at: string;
     updated_at: string;
 }
 
 export interface MealPlan {
+    id?: number;
     code: string;
     name: string;
     includes_breakfast: boolean;
     includes_lunch: boolean;
     includes_dinner: boolean;
+}
+
+export interface CustomerRatePlan {
+    id: number;
+    code: string;
+    name: string;
+    plan_type: string;
+    adjustment_type: 'NONE' | 'PERCENTAGE' | 'FIXED';
+    adjustment_value: string;
+    is_public: boolean;
+    is_refundable: boolean;
+    meal_plan?: MealPlan | null;
+    inclusions: string[];
 }
 
 export interface RoomTypeMealPlan {
@@ -88,6 +107,20 @@ export interface HotelPartnerProperty {
     status: PropertyStatus;
     rejection_reason?: string;
     property_type: PropertyType;
+    pricing_mode: PricingMode;
+    b2b_global_summary?: {
+        configured: boolean;
+        status: 'NOT_CONFIGURED' | 'DRAFT_NOT_PUBLISHED' | 'SCHEDULED_FOR_B2B_AGENTS' | 'PUBLISHED_TO_B2B_AGENTS' | 'EXPIRED';
+        message: string;
+        contract_id?: number;
+        contract_number?: string;
+        rates: Array<{
+            plan: string;
+            final_b2b_rate: string;
+            min_rooms: number;
+            max_rooms?: number | null;
+        }>;
+    };
     property_name: string;
     slug: string;
     description: string;
@@ -143,6 +176,7 @@ export interface HotelPartnerProperty {
 }
 
 export type B2BCommissionType = 'PERCENTAGE' | 'FLAT';
+export type B2BPricingMode = 'ROOM_WISE' | 'GLOBAL' | 'BOTH';
 
 export interface PaxMatrixData {
     columns: string[];
@@ -190,6 +224,11 @@ export interface B2BGlobalRatePlan {
 export interface B2BContract {
     id?: number;
     hotel: number;
+    contract_number: string;
+    counterparty_name: string;
+    pricing_mode: B2BPricingMode;
+    version?: number;
+    amendment_of?: number | null;
     commission_type: B2BCommissionType;
     value: string;
     shambit_discount_rate: Record<string, {value: string, type: 'PERCENTAGE' | 'FLAT' | 'FIXED_NET_RATE'}>;
@@ -203,8 +242,34 @@ export interface B2BContract {
     agent_commission_gst_rate?: string;
     room_rate_plans?: B2BRoomRatePlan[];
     global_rate_plans?: B2BGlobalRatePlan[];
+    effective_from?: string | null;
+    effective_to?: string | null;
+    change_reason?: string;
+    created_by?: number | null;
+    updated_by?: number | null;
+    published_by?: number | null;
+    created_by_name?: string | null;
+    updated_by_name?: string | null;
+    published_by_name?: string | null;
+    published_at?: string | null;
+    documents?: B2BContractDocument[];
+    missing_requirements?: string[];
     created_at?: string;
     updated_at?: string;
+}
+
+export interface B2BContractDocument {
+    id: number;
+    contract: number;
+    document_type: 'SIGNED_CONTRACT' | 'ADDENDUM' | 'OTHER';
+    original_name: string;
+    content_type: string;
+    file_size: number;
+    sha256: string;
+    signed_at?: string | null;
+    uploaded_by_name?: string | null;
+    uploaded_at: string;
+    download_url: string;
 }
 
 export interface AdminPropertyListResponse {
@@ -223,6 +288,12 @@ export interface B2BPreviewPayload {
     value: string;
     tax_application: TaxApplicationType;
     agent_deduction_strategy: AgentDeductionStrategy;
+    pricing_mode: B2BPricingMode;
+    hotel_gst_rate: string;
+    shambit_profit_gst_rate: string;
+    agent_commission_gst_rate: string;
+    room_rate_plans: B2BRoomRatePlan[];
+    global_rate_plans: B2BGlobalRatePlan[];
 }
 
 export interface B2BPreviewRow {
@@ -240,4 +311,19 @@ export interface B2BPreviewRow {
 
 export interface B2BPreviewResponse {
     matrices: B2BPreviewRow[][];
+    global_matrices: Array<{
+        id: string | number;
+        name: string;
+        hotel_net_base: number;
+        hotel_net_tax: number;
+        hotel_net_total: number;
+        profit_base: number;
+        profit_tax: number;
+        profit_total: number;
+        agent_tac_base: number;
+        agent_tac_tax: number;
+        agent_tac_total: number;
+        final_b2b_selling_total: number;
+        net_shambit_profit_base: number;
+    }>;
 }
