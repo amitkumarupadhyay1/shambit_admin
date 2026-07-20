@@ -26,6 +26,7 @@ function apiErrorMessage(error: unknown, fallback: string) {
 export default function B2BManualAllocationPanel() {
   const [orders, setOrders] = useState<B2BManualOrder[]>([]);
   const [allocations, setAllocations] = useState<AllocationState>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +67,11 @@ export default function B2BManualAllocationPanel() {
   };
 
   const confirmOrder = async (order: B2BManualOrder) => {
+    const note = (notes[order.booking_reference] || '').trim();
+    if (note.length < 10) {
+      setError(`Add a hotel confirmation/allocation note of at least 10 characters for ${order.booking_reference}.`);
+      return;
+    }
     const allocationRows = Object.entries(allocations[order.booking_reference] || {})
       .map(([roomTypeId, quantity]) => ({ room_type_id: Number(roomTypeId), quantity }))
       .filter((item) => item.quantity > 0);
@@ -79,7 +85,7 @@ export default function B2BManualAllocationPanel() {
     setProcessing(order.booking_reference);
     setError(null);
     try {
-      await bookingsService.confirmB2BManualAllocation(order.booking_reference, allocationRows);
+      await bookingsService.confirmB2BManualAllocation(order.booking_reference, allocationRows, note);
       await loadOrders();
     } catch (confirmError) {
       setError(apiErrorMessage(confirmError, 'Unable to confirm this allocation.'));
@@ -89,11 +95,16 @@ export default function B2BManualAllocationPanel() {
   };
 
   const rejectOrder = async (order: B2BManualOrder) => {
+    const note = (notes[order.booking_reference] || '').trim();
+    if (note.length < 10) {
+      setError(`Add a rejection note of at least 10 characters for ${order.booking_reference}.`);
+      return;
+    }
     if (!window.confirm(`Reject ${order.booking_reference} and release its ledger hold?`)) return;
     setProcessing(order.booking_reference);
     setError(null);
     try {
-      await bookingsService.rejectB2BManualOrder(order.booking_reference);
+      await bookingsService.rejectB2BManualOrder(order.booking_reference, note);
       await loadOrders();
     } catch (rejectError) {
       setError(apiErrorMessage(rejectError, 'Unable to reject this booking request.'));
@@ -154,6 +165,7 @@ export default function B2BManualAllocationPanel() {
                     <p>{formatDate(order.check_in)} to {formatDate(order.check_out)}</p>
                     <p>{order.total_rooms} rooms · {order.total_guests} guests · {formatCurrency(order.b2b_selling_total)}</p>
                     <p className="text-xs text-gray-500">Submitted {formatDateTime(order.created_at)}</p>
+                    <p className="text-xs font-semibold text-amber-700">Confirmation deadline {formatDateTime(order.confirmation_deadline)}</p>
                   </div>
                 </div>
                 <div className="rounded-xl bg-gray-50 p-4 text-sm">
@@ -178,6 +190,18 @@ export default function B2BManualAllocationPanel() {
                     />
                   </label>
                 ))}
+              </div>
+
+              <div className="mt-5">
+                <label className="text-sm font-semibold text-gray-900">Hotel confirmation / negotiation note</label>
+                <textarea
+                  value={notes[order.booking_reference] || ''}
+                  onChange={(event) => setNotes((current) => ({ ...current, [order.booking_reference]: event.target.value }))}
+                  rows={3}
+                  maxLength={2000}
+                  placeholder="Record who confirmed with the hotel, confirmation reference, or the precise rejection reason. This is retained in the audit trail."
+                  className="mt-2 w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                />
               </div>
 
               <div className="mt-5 flex flex-wrap justify-end gap-3">

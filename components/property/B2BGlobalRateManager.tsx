@@ -30,6 +30,7 @@ export default function B2BGlobalRateManager({ property, contract, onChange }: P
       tax_percent: '12.00',
       min_rooms: 5,
       allocation_mode: 'AUTO_ALLOCATE',
+      confirmation_sla_minutes: 60,
       blackout_dates: [],
       terms_and_conditions: '',
       eligible_rooms: defaultEligibleRooms()
@@ -170,6 +171,19 @@ export default function B2BGlobalRateManager({ property, contract, onChange }: P
                   <option value="MANUAL_CONFIRMATION">Manual Confirmation</option>
                 </select>
               </div>
+              {plan.allocation_mode === 'MANUAL_CONFIRMATION' && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Confirmation SLA (minutes)</label>
+                  <Input
+                    type="number"
+                    min="5"
+                    max="1440"
+                    value={plan.confirmation_sla_minutes || 60}
+                    onChange={(e) => handleUpdate(idx, 'confirmation_sla_minutes', Number.parseInt(e.target.value, 10) || 60)}
+                    className="h-10 text-sm font-bold"
+                  />
+                </div>
+              )}
               <div className="space-y-1 md:col-span-2 xl:col-span-4">
                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Eligible Rooms (select at least one)</label>
                  <div className="flex flex-wrap gap-2 mt-1">

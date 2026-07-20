@@ -84,6 +84,7 @@ export interface B2BManualOrder {
   global_rate_plan: string;
   b2b_selling_total: string;
   created_at: string;
+  confirmation_deadline: string;
   eligible_rooms: B2BManualEligibleRoom[];
 }
 

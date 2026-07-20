@@ -214,6 +214,7 @@ export interface B2BGlobalRatePlan {
     min_rooms: number;
     max_rooms?: number | null;
     allocation_mode: 'AUTO_ALLOCATE' | 'MANUAL_CONFIRMATION';
+    confirmation_sla_minutes: number;
     effective_from?: string | null;
     effective_to?: string | null;
     blackout_dates: string[];

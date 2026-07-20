@@ -96,6 +96,7 @@ function validatePricingDraft(draft: Partial<B2BContract>): string[] {
       if (!(Number(plan.hotel_net_rate_per_room_per_night) > 0)) errors.push(`Global rate ${index + 1}: net rate must be greater than zero.`);
       if (!(Number(plan.min_rooms) >= 1)) errors.push(`Global rate ${index + 1}: minimum rooms must be at least one.`);
       if (plan.max_rooms != null && Number(plan.max_rooms) < Number(plan.min_rooms)) errors.push(`Global rate ${index + 1}: maximum rooms cannot be less than minimum rooms.`);
+      if (plan.allocation_mode === 'MANUAL_CONFIRMATION' && !(Number(plan.confirmation_sla_minutes) >= 5 && Number(plan.confirmation_sla_minutes) <= 1440)) errors.push(`Global rate ${index + 1}: confirmation SLA must be between 5 and 1440 minutes.`);
       if (!plan.eligible_rooms?.length) errors.push(`Global rate ${index + 1}: select at least one eligible room.`);
     });
   }

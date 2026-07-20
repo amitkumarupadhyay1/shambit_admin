@@ -24,12 +24,14 @@ export const bookingsService = {
   confirmB2BManualAllocation: async (
     reference: string,
     allocations: B2BRoomAllocationInput[],
+    note: string,
   ): Promise<void> => {
     await api.post(`/b2b/admin/orders/${encodeURIComponent(reference)}/confirm-allocation/`, {
       allocations,
+      note,
     });
   },
-  rejectB2BManualOrder: async (reference: string): Promise<void> => {
-    await api.post(`/b2b/admin/orders/${encodeURIComponent(reference)}/reject/`, {});
+  rejectB2BManualOrder: async (reference: string, note: string): Promise<void> => {
+    await api.post(`/b2b/admin/orders/${encodeURIComponent(reference)}/reject/`, { note });
   },
 };
