@@ -211,6 +211,9 @@ export interface B2BGlobalRatePlan {
     is_active: boolean;
     hotel_net_rate_per_room_per_night: string;
     tax_percent: string;
+    max_persons_per_room?: number;
+    max_extra_persons?: number;
+    extra_mattress_cost?: string;
     min_rooms: number;
     max_rooms?: number | null;
     allocation_mode: 'AUTO_ALLOCATE' | 'MANUAL_CONFIRMATION';
@@ -241,6 +244,9 @@ export interface B2BContract {
     hotel_gst_rate?: string;
     shambit_profit_gst_rate?: string;
     agent_commission_gst_rate?: string;
+    foc_minimum_rooms?: number | string;
+    foc_rooms_granted?: number | string;
+    foc_is_capped_at_one?: boolean;
     room_rate_plans?: B2BRoomRatePlan[];
     global_rate_plans?: B2BGlobalRatePlan[];
     effective_from?: string | null;
@@ -315,6 +321,7 @@ export interface B2BPreviewResponse {
     global_matrices: Array<{
         id: string | number;
         name: string;
+        extra_mattress_cost?: number;
         hotel_net_base: number;
         hotel_net_tax: number;
         hotel_net_total: number;

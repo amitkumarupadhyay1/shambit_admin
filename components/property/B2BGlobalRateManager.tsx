@@ -28,6 +28,9 @@ export default function B2BGlobalRateManager({ property, contract, onChange }: P
       is_active: true,
       hotel_net_rate_per_room_per_night: '0.00',
       tax_percent: '12.00',
+      max_persons_per_room: 2,
+      max_extra_persons: 0,
+      extra_mattress_cost: '0.00',
       min_rooms: 5,
       allocation_mode: 'AUTO_ALLOCATE',
       confirmation_sla_minutes: 60,
@@ -134,6 +137,42 @@ export default function B2BGlobalRateManager({ property, contract, onChange }: P
                   step="0.01"
                   value={plan.tax_percent}
                   onChange={(e) => handleUpdate(idx, 'tax_percent', e.target.value)}
+                  className="h-10 text-sm font-bold"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Base Persons</label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={plan.max_persons_per_room ?? 2}
+                  onChange={(e) => {
+                    const parsed = Number.parseInt(e.target.value, 10);
+                    handleUpdate(idx, 'max_persons_per_room', Number.isFinite(parsed) ? parsed : 2);
+                  }}
+                  className="h-10 text-sm font-bold"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Max Extra Persons</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={plan.max_extra_persons ?? 0}
+                  onChange={(e) => {
+                    const parsed = Number.parseInt(e.target.value, 10);
+                    handleUpdate(idx, 'max_extra_persons', Number.isFinite(parsed) ? parsed : 0);
+                  }}
+                  className="h-10 text-sm font-bold"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Extra Cost (₹)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={plan.extra_mattress_cost ?? '0.00'}
+                  onChange={(e) => handleUpdate(idx, 'extra_mattress_cost', e.target.value)}
                   className="h-10 text-sm font-bold"
                 />
               </div>

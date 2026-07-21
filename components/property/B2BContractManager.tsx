@@ -42,6 +42,9 @@ const emptyContract: Partial<B2BContract> = {
   hotel_gst_rate: '12.00',
   shambit_profit_gst_rate: '18.00',
   agent_commission_gst_rate: '18.00',
+  foc_minimum_rooms: 15,
+  foc_rooms_granted: 1,
+  foc_is_capped_at_one: true,
   effective_from: null,
   effective_to: null,
   change_reason: '',
@@ -78,6 +81,8 @@ function validatePricingDraft(draft: Partial<B2BContract>): string[] {
   if (!draft.pricing_mode) errors.push('Select the contract pricing mode.');
   if (!(Number(draft.shambit_profit_margin) > 0)) errors.push('ShamBit margin must be greater than zero.');
   if (draft.value === '' || draft.value == null || Number(draft.value) < 0) errors.push('Agent TAC / commission must be zero or greater.');
+  if (draft.foc_minimum_rooms != null && Number(draft.foc_minimum_rooms) < 0) errors.push('Minimum FOC threshold cannot be negative.');
+  if (draft.foc_rooms_granted != null && Number(draft.foc_rooms_granted) < 0) errors.push('FOC rooms granted cannot be negative.');
 
   if (includesRoomMode(draft.pricing_mode)) {
     if (!activeRoomPlans.length) errors.push('Room-wise mode requires at least one active room rate.');
@@ -94,6 +99,9 @@ function validatePricingDraft(draft: Partial<B2BContract>): string[] {
     activeGlobalPlans.forEach((plan, index) => {
       if (!plan.name.trim()) errors.push(`Global rate ${index + 1}: plan name is required.`);
       if (!(Number(plan.hotel_net_rate_per_room_per_night) > 0)) errors.push(`Global rate ${index + 1}: net rate must be greater than zero.`);
+      if (!(Number(plan.max_persons_per_room) >= 1)) errors.push(`Global rate ${index + 1}: base persons must be at least one.`);
+      if (!(Number(plan.max_extra_persons) >= 0)) errors.push(`Global rate ${index + 1}: max extra persons must be zero or greater.`);
+      if (Number(plan.max_extra_persons) > 0 && !(Number(plan.extra_mattress_cost) > 0)) errors.push(`Global rate ${index + 1}: extra cost must be greater than zero if max extra persons is > 0.`);
       if (!(Number(plan.min_rooms) >= 1)) errors.push(`Global rate ${index + 1}: minimum rooms must be at least one.`);
       if (plan.max_rooms != null && Number(plan.max_rooms) < Number(plan.min_rooms)) errors.push(`Global rate ${index + 1}: maximum rooms cannot be less than minimum rooms.`);
       if (plan.allocation_mode === 'MANUAL_CONFIRMATION' && !(Number(plan.confirmation_sla_minutes) >= 5 && Number(plan.confirmation_sla_minutes) <= 1440)) errors.push(`Global rate ${index + 1}: confirmation SLA must be between 5 and 1440 minutes.`);
@@ -548,12 +556,23 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
         {activeTab === 'ROOM' && <B2BRoomRateManager property={property} contract={draft} onChange={update} />}
         {activeTab === 'GLOBAL' && <B2BGlobalRateManager property={property} contract={draft} onChange={update} />}
 
-        {activeTab === 'SETTLEMENT' && <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-          <SelectField label="ShamBit margin type" value={draft.profit_margin_type || ''} onChange={value => update({ profit_margin_type: value as ProfitMarginType })} options={[['PERCENTAGE', 'Percentage (%)'], ['FLAT', 'Flat per room/night (₹)']]} />
-          <Field label="ShamBit margin"><Input type="number" min="0" step="0.01" value={draft.shambit_profit_margin || ''} onChange={event => update({ shambit_profit_margin: event.target.value })} /></Field>
-          <SelectField label="Agent TAC type" value={draft.commission_type || ''} onChange={value => update({ commission_type: value as B2BCommissionType })} options={[['PERCENTAGE', 'Percentage (%)'], ['FLAT', 'Flat per room/night (₹)']]} />
-          <Field label="Agent TAC"><Input type="number" min="0" step="0.01" value={draft.value || ''} onChange={event => update({ value: event.target.value })} /></Field>
-          <div className="md:col-span-2"><SelectField label="Agent deduction strategy" value={draft.agent_deduction_strategy || ''} onChange={value => update({ agent_deduction_strategy: value as AgentDeductionStrategy })} options={[['DEDUCT_FROM_PROFIT', 'Deduct TAC from ShamBit profit'], ['ADD_TO_SELLING_PRICE', 'Add TAC to B2B selling price']]} /></div>
+        {activeTab === 'SETTLEMENT' && <div className="space-y-6">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            <SelectField label="ShamBit margin type" value={draft.profit_margin_type || ''} onChange={value => update({ profit_margin_type: value as ProfitMarginType })} options={[['PERCENTAGE', 'Percentage (%)'], ['FLAT', 'Flat per room/night (₹)']]} />
+            <Field label="ShamBit margin"><Input type="number" min="0" step="0.01" value={draft.shambit_profit_margin || ''} onChange={event => update({ shambit_profit_margin: event.target.value })} /></Field>
+            <SelectField label="Agent TAC type" value={draft.commission_type || ''} onChange={value => update({ commission_type: value as B2BCommissionType })} options={[['PERCENTAGE', 'Percentage (%)'], ['FLAT', 'Flat per room/night (₹)']]} />
+            <Field label="Agent TAC"><Input type="number" min="0" step="0.01" value={draft.value || ''} onChange={event => update({ value: event.target.value })} /></Field>
+            <div className="md:col-span-2"><SelectField label="Agent deduction strategy" value={draft.agent_deduction_strategy || ''} onChange={value => update({ agent_deduction_strategy: value as AgentDeductionStrategy })} options={[['DEDUCT_FROM_PROFIT', 'Deduct TAC from ShamBit profit'], ['ADD_TO_SELLING_PRICE', 'Add TAC to B2B selling price']]} /></div>
+          </div>
+          <div className="border-t border-gray-200 pt-6">
+            <h3 className="mb-4 text-lg font-black">Free of Cost (FOC) Room Rules</h3>
+            <div className="grid gap-5 md:grid-cols-3">
+              <Field label="Minimum Rooms for FOC"><Input type="number" min="0" value={draft.foc_minimum_rooms || ''} onChange={event => update({ foc_minimum_rooms: parseInt(event.target.value) || 0 })} /></Field>
+              <Field label="FOC Rooms Granted"><Input type="number" min="0" value={draft.foc_rooms_granted || ''} onChange={event => update({ foc_rooms_granted: parseInt(event.target.value) || 0 })} /></Field>
+              <SelectField label="FOC Cap" value={draft.foc_is_capped_at_one ? 'true' : 'false'} onChange={value => update({ foc_is_capped_at_one: value === 'true' })} options={[['true', 'Capped strictly to granted amount'], ['false', 'Scale with volume (e.g. 2 for 30)']]} />
+            </div>
+            <p className="mt-2 text-xs font-semibold text-gray-500">Note: FOC rule applies universally to Global/Run of House block bookings.</p>
+          </div>
         </div>}
 
         {activeTab === 'VALIDITY' && <div className="space-y-6">
@@ -573,7 +592,7 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
         {activeTab === 'PREVIEW' && <div className="space-y-7">
           <div className="flex items-center justify-between"><div><h3 className="text-lg font-black">Final settled rates</h3><p className="text-sm text-gray-500">Room-wise and global products are shown in separate sections.</p></div><Button variant="outline" onClick={loadPreview} disabled={previewLoading}>{previewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh preview'}</Button></div>
           {includesRoomMode(draft.pricing_mode) && <PreviewTable title="Room-wise settled rates" rows={(preview?.matrices || []).flat()} />}
-          {includesGlobalMode(draft.pricing_mode) && <div><h4 className="mb-3 font-black">Global / bulk settled rates</h4><div className="overflow-x-auto rounded-xl border"><table className="w-full text-sm"><thead className="bg-gray-50 text-left"><tr><th className="p-3">Plan</th><th className="p-3 text-right">Hotel net + tax</th><th className="p-3 text-right">ShamBit profit</th><th className="p-3 text-right">Agent TAC</th><th className="p-3 text-right">Final B2B rate</th></tr></thead><tbody>{(preview?.global_matrices || []).map(row => <tr key={row.id} className="border-t"><td className="p-3 font-bold">{row.name}</td><td className="p-3 text-right">₹{Number(row.hotel_net_total).toFixed(2)}</td><td className="p-3 text-right">₹{Number(row.profit_total).toFixed(2)}</td><td className="p-3 text-right">₹{Number(row.agent_tac_total).toFixed(2)}</td><td className="p-3 text-right font-black text-emerald-700">₹{Number(row.final_b2b_selling_total).toFixed(2)}</td></tr>)}{!preview?.global_matrices?.length && <tr><td colSpan={5} className="p-8 text-center text-gray-500">No valid global rates to preview.</td></tr>}</tbody></table></div></div>}
+          {includesGlobalMode(draft.pricing_mode) && <div><h4 className="mb-3 font-black">Global / bulk settled rates</h4><div className="overflow-x-auto rounded-xl border"><table className="w-full text-sm"><thead className="bg-gray-50 text-left"><tr><th className="p-3">Plan</th><th className="p-3 text-right">Extra Cost</th><th className="p-3 text-right">Hotel net + tax</th><th className="p-3 text-right">ShamBit profit</th><th className="p-3 text-right">Agent TAC</th><th className="p-3 text-right">Final B2B rate</th></tr></thead><tbody>{(preview?.global_matrices || []).map(row => <tr key={row.id} className="border-t"><td className="p-3 font-bold">{row.name}</td><td className="p-3 text-right">₹{Number(row.extra_mattress_cost || 0).toFixed(2)}</td><td className="p-3 text-right">₹{Number(row.hotel_net_total).toFixed(2)}</td><td className="p-3 text-right">₹{Number(row.profit_total).toFixed(2)}</td><td className="p-3 text-right">₹{Number(row.agent_tac_total).toFixed(2)}</td><td className="p-3 text-right font-black text-emerald-700">₹{Number(row.final_b2b_selling_total).toFixed(2)}</td></tr>)}{!preview?.global_matrices?.length && <tr><td colSpan={6} className="p-8 text-center text-gray-500">No valid global rates to preview.</td></tr>}</tbody></table></div></div>}
         </div>}
       </CardContent></Card>
 
