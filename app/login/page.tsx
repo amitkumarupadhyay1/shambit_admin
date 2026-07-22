@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { authService } from '@/services/auth';
+import { signIn } from 'next-auth/react';
+import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Shield } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
@@ -13,6 +14,9 @@ import { Turnstile } from '@marsidev/react-turnstile';
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [totpRequired, setTotpRequired] = useState(false);
+  const [tempToken, setTempToken] = useState('');
+  const [totpCode, setTotpCode] = useState('');
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -21,36 +25,70 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check if site key is configured and token is missing
-    if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !formData.turnstile_token) {
-      toast.error('Please complete the CAPTCHA verification. If you don\'t see it, please disable your adblocker.');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      await authService.login(formData);
-      toast.success('Login successful!');
-      router.push('/dashboard');
-    } catch (error) {
-      console.error('Login error:', error);
-      const axiosError = error as { response?: { data?: { detail?: string } } };
-      const errorMessage =
-        axiosError.response?.data?.detail ||
-        (error instanceof Error ? error.message : 'Invalid credentials');
-      
-      // Provide actionable feedback if it's a captcha error
-      if (errorMessage.toLowerCase().includes('captcha')) {
-        toast.error('Invalid CAPTCHA. Please disable your adblocker or tracking protection on this page and try again.');
+      if (!totpRequired) {
+        if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !formData.turnstile_token) {
+          toast.error('Please complete the CAPTCHA verification.');
+          setIsLoading(false);
+          return;
+        }
+
+        const res = await axios.post('/api/auth/pre-login', formData, {
+          validateStatus: () => true
+        });
+
+        if (res.status === 200) {
+          if (res.data.totp_required) {
+            setTempToken(res.data.temp_token || '');
+            setTotpRequired(true);
+          } else if (res.data.access) {
+            // No TOTP required
+            const result = await signIn("credentials", {
+              redirect: false,
+              type: 'tokens',
+              ...res.data.user,
+              access: res.data.access,
+              refresh: res.data.refresh,
+            }) as { error?: string } | undefined;
+
+            if (result?.error) {
+              toast.error(result.error);
+            } else {
+              toast.success('Login successful!');
+              router.push('/dashboard');
+              router.refresh();
+            }
+          }
+        } else {
+          toast.error(res.data.error || res.data.detail || 'Login failed');
+        }
       } else {
-        toast.error(errorMessage);
+        // Submit TOTP code
+        const res = await signIn("credentials", {
+          redirect: false,
+          type: 'totp',
+          temp_token: tempToken,
+          totp_code: totpCode,
+        }) as { error?: string } | undefined;
+
+        if (res?.error) {
+          toast.error(res.error === "TOTP_FAILED" ? "Invalid authenticator code" : res.error);
+        } else {
+          toast.success('Login successful!');
+          router.push('/dashboard');
+          router.refresh();
+        }
       }
+    } catch (error: unknown) {
+      console.error('Login error:', error);
+      toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
@@ -75,41 +113,68 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                  Username
-                </label>
-                <Input
-                  id="username"
-                  type="text"
-                  required
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  placeholder="Enter your username"
-                />
-              </div>
+              {!totpRequired ? (
+                <>
+                  <div>
+                    <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                      Username
+                    </label>
+                    <Input
+                      id="username"
+                      type="text"
+                      required
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      placeholder="Enter your username"
+                    />
+                  </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Enter your password"
-                />
-              </div>
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                      Password
+                    </label>
+                    <Input
+                      id="password"
+                      type="password"
+                      required
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Enter your password"
+                    />
+                  </div>
 
-              {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
-                <div className="flex justify-center my-4">
-                  <Turnstile
-                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
-                    onSuccess={(token) => setFormData({ ...formData, turnstile_token: token })}
-                    onError={() => toast.error('CAPTCHA verification failed to load. Please disable your adblocker or tracking protection.')}
+                  {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+                    <div className="flex justify-center my-4">
+                      <Turnstile
+                        siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                        onSuccess={(token) => setFormData({ ...formData, turnstile_token: token })}
+                        onError={() => toast.error('CAPTCHA verification failed to load. Please disable your adblocker or tracking protection.')}
+                      />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div>
+                  <label htmlFor="totpCode" className="block text-sm font-medium text-gray-700 mb-2">
+                    Authenticator Code (2FA)
+                  </label>
+                  <Input
+                    id="totpCode"
+                    type="text"
+                    required
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                    maxLength={6}
+                    className="text-center text-xl tracking-[0.5em]"
                   />
+                  <button 
+                    type="button" 
+                    onClick={() => { setTotpRequired(false); setTotpCode(''); }}
+                    className="mt-4 text-sm text-blue-600 hover:underline block text-center w-full"
+                  >
+                    Back to login
+                  </button>
                 </div>
               )}
 

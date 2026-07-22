@@ -19,9 +19,11 @@ export interface LoginCredentials {
 }
 
 export interface LoginResponse {
-  access: string;
-  refresh: string;
-  user: User;
+  access?: string;
+  refresh?: string;
+  user?: User;
+  totp_required?: boolean;
+  temp_token?: string;
 }
 
 export interface AuthState {

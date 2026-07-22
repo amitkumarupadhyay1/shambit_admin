@@ -237,10 +237,10 @@ export function useAdminSupportConversation(
     [clearAckTimer, markRead, ticketId]
   );
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!ticketRef || ws.current) return;
 
-    const token = getAuthToken();
+    const token = await getAuthToken();
     if (!token) {
       setError('Admin token missing. Please sign in again.');
       setConnectionState('offline');

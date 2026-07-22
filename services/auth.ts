@@ -1,5 +1,4 @@
-import api, { setAuthToken } from '@/lib/api';
-import type { LoginCredentials, LoginResponse } from '@/types/auth';
+import api from '@/lib/api';
 
 // Simplified response type that matches backend
 interface BackendLoginResponse {
@@ -21,69 +20,6 @@ interface BackendLoginResponse {
 }
 
 export const authService = {
-  /**
-   * Login admin user
-   * Note: Backend doesn't expose is_staff/is_superuser in the response.
-   * Admin verification should be implemented on the backend side.
-   */
-  login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
-    const response = await api.post<BackendLoginResponse>('/auth/login/', credentials);
-    
-    // Set token in localStorage and axios headers
-    if (response.data.access) {
-      setAuthToken(response.data.access);
-      // Store refresh token
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('admin_refresh_token', response.data.refresh);
-      }
-    }
-    
-    // Transform backend response to match frontend expectations
-    const user = {
-      ...response.data.user,
-      is_staff: Boolean(response.data.user.is_staff),
-      is_superuser: Boolean(response.data.user.is_superuser),
-      groups: response.data.user.groups || [],
-      permissions: response.data.user.permissions || [],
-    };
-
-    if (!user.is_staff && !user.is_superuser) {
-      setAuthToken(null);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('admin_refresh_token');
-      }
-      throw new Error('This account is not authorized for the admin dashboard.');
-    }
-
-    return {
-      access: response.data.access,
-      refresh: response.data.refresh,
-      user,
-    };
-  },
-
-  /**
-   * Logout admin user
-   */
-  logout: async (): Promise<void> => {
-    try {
-      const refreshToken = typeof window !== 'undefined' 
-        ? localStorage.getItem('admin_refresh_token') 
-        : null;
-      
-      if (refreshToken) {
-        await api.post('/auth/logout/', { refresh: refreshToken });
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setAuthToken(null);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('admin_refresh_token');
-      }
-    }
-  },
-
   /**
    * Get current user profile
    */

@@ -1,4 +1,5 @@
 import NextAuth from "next-auth"
+import Credentials from "next-auth/providers/credentials"
 import axios from "axios"
 import type { JWT } from "next-auth/jwt"
 
@@ -100,7 +101,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     },
   },
-  providers: [],
+  providers: [
+    Credentials({
+      name: "Credentials",
+      credentials: {},
+      async authorize(credentials) {
+        const creds = credentials as Record<string, unknown>;
+        if (!creds) return null;
+
+        if (creds.type === 'tokens') {
+          return {
+            id: creds.id as string,
+            username: creds.username as string,
+            firstName: creds.firstName as string,
+            lastName: creds.lastName as string,
+            phone: creds.phone as string,
+            accessToken: creds.access as string,
+            refreshToken: creds.refresh as string,
+          };
+        }
+        return null;
+      }
+    })
+  ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

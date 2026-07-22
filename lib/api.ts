@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getSession, signOut } from 'next-auth/react';
 
 const getApiBaseUrl = () => {
   if (typeof window === 'undefined') {
@@ -11,6 +12,14 @@ const API_BASE_URL = getApiBaseUrl();
 
 export const getWsBaseUrl = (): string => {
   return API_BASE_URL.replace(/^http/, 'ws').replace(/\/api$/, '/ws/support');
+};
+
+export const getAuthToken = async (): Promise<string | undefined> => {
+  if (typeof window !== 'undefined') {
+    const session = await getSession();
+    return session?.accessToken;
+  }
+  return undefined;
 };
 
 export const getWsUrl = (ticketRef: string, token?: string): string => {
@@ -29,12 +38,12 @@ const api = axios.create({
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
-  (config) => {
-    // Get token from localStorage (will be set after login)
+  async (config) => {
+    // Get token from NextAuth session on the client
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('admin_token');
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
+      const session = await getSession();
+      if (session?.accessToken && config.headers) {
+        config.headers.Authorization = `Bearer ${session.accessToken}`;
       }
     }
     return config;
@@ -49,10 +58,10 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
+      // Unauthorized - NextAuth handles token refresh behind the scenes,
+      // so if we get 401 it means refresh failed or token is truly invalid
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('admin_token');
-        window.location.href = '/login';
+        signOut({ callbackUrl: '/login' });
       }
     }
     return Promise.reject(error);
@@ -60,26 +69,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-
-// Helper function to set auth token
-export const setAuthToken = (token: string | null) => {
-  if (token) {
-    localStorage.setItem('admin_token', token);
-    if (api.defaults.headers.common) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
-  } else {
-    localStorage.removeItem('admin_token');
-    if (api.defaults.headers.common) {
-      delete api.defaults.headers.common['Authorization'];
-    }
-  }
-};
-
-// Helper function to get auth token
-export const getAuthToken = (): string | null => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('admin_token');
-  }
-  return null;
-};

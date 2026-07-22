@@ -16,10 +16,10 @@ import {
   Menu,
   X
 } from 'lucide-react';
-import { getAuthToken } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { authService } from '@/services/auth';
 import toast from 'react-hot-toast';
+import { getSession, signOut } from 'next-auth/react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -45,22 +45,24 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = getAuthToken();
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
     let mounted = true;
-    void authService.verifyAdmin().then((isAdmin) => {
+
+    getSession().then((session) => {
       if (!mounted) return;
-      if (!isAdmin) {
-        toast.error('Admin access is required.');
-        void authService.logout();
+      if (!session?.accessToken) {
         router.push('/login');
         return;
       }
-      setIsLoading(false);
+
+      authService.verifyAdmin().then((isAdmin) => {
+        if (!mounted) return;
+        if (!isAdmin) {
+          toast.error('Admin access is required.');
+          void signOut({ callbackUrl: '/login' });
+          return;
+        }
+        setIsLoading(false);
+      });
     });
 
     return () => {
@@ -76,7 +78,7 @@ export default function DashboardLayout({
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         toast.error('Session expired after 30 minutes of inactivity.');
-        void authService.logout().finally(() => router.push('/login'));
+        void signOut({ callbackUrl: '/login' });
       }, INACTIVITY_TIMEOUT_MS);
     };
 
@@ -92,9 +94,8 @@ export default function DashboardLayout({
 
   const handleLogout = async () => {
     try {
-      await authService.logout();
+      await signOut({ callbackUrl: '/login' });
       toast.success('Logged out successfully');
-      router.push('/login');
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Failed to logout');
