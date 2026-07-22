@@ -39,6 +39,7 @@ const emptyContract: Partial<B2BContract> = {
   value: '',
   tax_application: 'PRE_TAX',
   agent_deduction_strategy: 'DEDUCT_FROM_PROFIT',
+  platform_fee_override: null,
   hotel_gst_rate: '12.00',
   shambit_profit_gst_rate: '18.00',
   agent_commission_gst_rate: '18.00',
@@ -81,6 +82,7 @@ function validatePricingDraft(draft: Partial<B2BContract>): string[] {
   if (!draft.pricing_mode) errors.push('Select the contract pricing mode.');
   if (!(Number(draft.shambit_profit_margin) > 0)) errors.push('ShamBit margin must be greater than zero.');
   if (draft.value === '' || draft.value == null || Number(draft.value) < 0) errors.push('Agent TAC / commission must be zero or greater.');
+  if (draft.platform_fee_override != null && draft.platform_fee_override !== '' && (Number(draft.platform_fee_override) < 0 || Number(draft.platform_fee_override) > 100)) errors.push('Platform fee override must be between 0 and 100%.');
   if (draft.foc_minimum_rooms != null && Number(draft.foc_minimum_rooms) < 0) errors.push('Minimum FOC threshold cannot be negative.');
   if (draft.foc_rooms_granted != null && Number(draft.foc_rooms_granted) < 0) errors.push('FOC rooms granted cannot be negative.');
 
@@ -563,6 +565,7 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
             <SelectField label="Agent TAC type" value={draft.commission_type || ''} onChange={value => update({ commission_type: value as B2BCommissionType })} options={[['PERCENTAGE', 'Percentage (%)'], ['FLAT', 'Flat per room/night (₹)']]} />
             <Field label="Agent TAC"><Input type="number" min="0" step="0.01" value={draft.value || ''} onChange={event => update({ value: event.target.value })} /></Field>
             <div className="md:col-span-2"><SelectField label="Agent deduction strategy" value={draft.agent_deduction_strategy || ''} onChange={value => update({ agent_deduction_strategy: value as AgentDeductionStrategy })} options={[['DEDUCT_FROM_PROFIT', 'Deduct TAC from ShamBit profit'], ['ADD_TO_SELLING_PRICE', 'Add TAC to B2B selling price']]} /></div>
+            <Field label="Platform fee override %"><Input type="number" min="0" max="100" step="0.01" value={draft.platform_fee_override || ''} onChange={event => update({ platform_fee_override: event.target.value || null })} placeholder="Blank uses global fee" /></Field>
           </div>
           <div className="border-t border-gray-200 pt-6">
             <h3 className="mb-4 text-lg font-black">Free of Cost (FOC) Room Rules</h3>
@@ -581,7 +584,20 @@ export default function B2BContractManager({ property, onNext, onBack }: Props) 
         </div>}
 
         {activeTab === 'DOCUMENTS' && <div className="space-y-6">
-          <div><h3 className="text-lg font-black">Signed agreement and addenda</h3><p className="text-sm text-gray-500">PDF, JPG or PNG only. Maximum 8 MB. Active-contract documents are immutable.</p></div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-lg font-black">Signed agreement and addenda</h3>
+              <p className="text-sm text-gray-500">PDF, JPG or PNG only. Maximum 8 MB. Active-contract documents are immutable.</p>
+            </div>
+            <a 
+              href="/ShamBit_B2B_Contract_Template.html" 
+              target="_blank" 
+              className="inline-flex shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-100"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download template
+            </a>
+          </div>
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-800">Uploading first validates and saves every contract section, then attaches the file. No form values are discarded.</div>
           <div className="grid gap-4 md:grid-cols-4"><SelectField label="Document type" value={documentType} onChange={value => setDocumentType(value as typeof documentType)} options={[['SIGNED_CONTRACT', 'Signed contract'], ['ADDENDUM', 'Addendum'], ['OTHER', 'Other evidence']]} /><Field label="Signed date"><Input type="date" value={signedAt} onChange={event => setSignedAt(event.target.value)} /></Field><div className="md:col-span-2"><Field label="File"><Input type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={draft.is_active} onChange={event => setDocumentFile(event.target.files?.[0] || null)} /></Field></div></div>
           {documentFile && <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-700">Selected file: {documentFile.name} · {(documentFile.size / 1024 / 1024).toFixed(2)} MB</p>}

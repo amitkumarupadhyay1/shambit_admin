@@ -23,6 +23,11 @@ function apiErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function toAmount(value: string | number | null | undefined) {
+  const amount = typeof value === 'number' ? value : Number.parseFloat(value || '0');
+  return Number.isFinite(amount) ? amount : 0;
+}
+
 export default function B2BManualAllocationPanel() {
   const [orders, setOrders] = useState<B2BManualOrder[]>([]);
   const [allocations, setAllocations] = useState<AllocationState>({});
@@ -143,6 +148,12 @@ export default function B2BManualAllocationPanel() {
         )}
         {orders.map((order) => {
           const selected = allocations[order.booking_reference] || {};
+          const pricing = order.pricing_snapshot;
+          const finalPayable = pricing?.final_b2b_selling_total || pricing?.b2b_selling_total || order.b2b_selling_total;
+          const platformFee = toAmount(pricing?.platform_fee_total);
+          const couponDiscount = toAmount(pricing?.coupon_discount_amount);
+          const focDiscount = toAmount(pricing?.foc_discount_total);
+          const focRooms = Number(pricing?.foc_rooms_granted || 0);
           const selectedTotal = Object.values(selected).reduce((total, quantity) => total + quantity, 0);
           const selectedCapacity = order.eligible_rooms.reduce(
             (total, room) => total + (selected[room.room_type_id] || 0) * room.max_adults,
@@ -162,8 +173,10 @@ export default function B2BManualAllocationPanel() {
                   <div className="mt-3 space-y-1 text-sm text-gray-600">
                     <p className="flex items-center gap-2 font-semibold text-gray-900"><Building2 className="h-4 w-4" /> {order.hotel_name}</p>
                     <p>{order.global_rate_plan} · {order.agency_name} ({order.agent_email})</p>
-                    <p>{formatDate(order.check_in)} to {formatDate(order.check_out)}</p>
-                    <p>{order.total_rooms} rooms · {order.total_guests} guests · {formatCurrency(order.b2b_selling_total)}</p>
+                    <p>{formatDate(order.check_in)} to {formatDate(order.check_out)}{order.num_nights ? ` · ${order.num_nights} night(s)` : ''}</p>
+                    <p>{order.total_rooms} rooms · {order.total_guests} adults · {formatCurrency(finalPayable)}</p>
+                    <p>Primary guest: {order.primary_guest_name || 'Not provided'} · {order.contact_email || 'No email'}{order.contact_phone ? ` · ${order.contact_phone}` : ''}</p>
+                    <p>Contract: {order.contract_number || 'Not captured'}{order.contract_version ? ` v${order.contract_version}` : ''}</p>
                     <p className="text-xs text-gray-500">Submitted {formatDateTime(order.created_at)}</p>
                     <p className="text-xs font-semibold text-amber-700">Confirmation deadline {formatDateTime(order.confirmation_deadline)}</p>
                   </div>
@@ -171,7 +184,36 @@ export default function B2BManualAllocationPanel() {
                 <div className="rounded-xl bg-gray-50 p-4 text-sm">
                   <p className="font-semibold text-gray-900">Allocation check</p>
                   <p className={selectedTotal === order.total_rooms ? 'mt-2 text-emerald-700' : 'mt-2 text-amber-700'}>Rooms: {selectedTotal} / {order.total_rooms}</p>
-                  <p className={selectedCapacity >= order.total_guests ? 'text-emerald-700' : 'text-amber-700'}>Adult capacity: {selectedCapacity} / {order.total_guests}</p>
+                  <p className={selectedCapacity >= order.total_guests ? 'text-emerald-700' : 'text-amber-700'}>Backend adult capacity: {selectedCapacity} / {order.total_guests}</p>
+                  <p className="mt-2 text-xs text-gray-500">Payment: {order.payment_status || 'PENDING'} · Allocation: {order.allocation_status || 'PENDING'}</p>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-[11px] font-bold uppercase text-gray-500">Subtotal</p>
+                  <p className="mt-1 font-black text-gray-900">{formatCurrency(pricing?.b2b_selling_subtotal || finalPayable)}</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-[11px] font-bold uppercase text-gray-500">Platform Fee</p>
+                  <p className="mt-1 font-black text-gray-900">{formatCurrency(platformFee)}</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-[11px] font-bold uppercase text-gray-500">Coupon</p>
+                  <p className="mt-1 font-black text-gray-900">{couponDiscount > 0 ? `-${formatCurrency(couponDiscount)}` : formatCurrency(0)}</p>
+                  {pricing?.coupon_code && <p className="mt-1 text-xs font-semibold text-emerald-700">{pricing.coupon_code}</p>}
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-[11px] font-bold uppercase text-gray-500">FOC Rooms</p>
+                  <p className="mt-1 font-black text-gray-900">{focRooms}</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-[11px] font-bold uppercase text-gray-500">FOC Benefit</p>
+                  <p className="mt-1 font-black text-gray-900">{focDiscount > 0 ? `-${formatCurrency(focDiscount)}` : formatCurrency(0)}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                  <p className="text-[11px] font-bold uppercase text-emerald-700">Final Payable</p>
+                  <p className="mt-1 font-black text-emerald-900">{formatCurrency(finalPayable)}</p>
                 </div>
               </div>
 
@@ -179,7 +221,7 @@ export default function B2BManualAllocationPanel() {
                 {order.eligible_rooms.map((room) => (
                   <label key={room.room_type_id} className="rounded-xl border border-gray-200 p-3">
                     <span className="block text-sm font-semibold text-gray-900">{room.name}</span>
-                    <span className="mt-1 block text-xs text-gray-500">{room.available_rooms} available · {room.max_adults} adults/room</span>
+                    <span className="mt-1 block text-xs text-gray-500">{room.available_rooms} available · {room.max_adults} adults/room{room.max_occupancy ? ` · ${room.max_occupancy} max occupancy` : ''}</span>
                     <Input
                       type="number"
                       min={0}

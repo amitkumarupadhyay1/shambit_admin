@@ -65,9 +65,24 @@ export interface B2BManualEligibleRoom {
   room_type_id: number;
   name: string;
   max_adults: number;
+  base_occupancy?: number;
+  max_occupancy?: number;
   available_rooms: number;
   max_rooms_per_booking: number | null;
   allocation_priority: number;
+}
+
+export interface B2BPricingSummary {
+  b2c_total?: string;
+  agent_tac_total?: string;
+  b2b_selling_subtotal?: string;
+  platform_fee_total?: string;
+  coupon_discount_amount?: string;
+  coupon_code?: string | null;
+  foc_rooms_granted?: number;
+  foc_discount_total?: string;
+  final_b2b_selling_total?: string;
+  b2b_selling_total: string;
 }
 
 export interface B2BManualOrder {
@@ -77,12 +92,19 @@ export interface B2BManualOrder {
   agent_email: string;
   check_in: string;
   check_out: string;
+  num_nights?: number;
   total_rooms: number;
   total_guests: number;
   primary_guest_name: string;
   contact_email: string;
+  contact_phone?: string;
+  contract_number?: string;
+  contract_version?: number | null;
   global_rate_plan: string;
+  pricing_snapshot?: B2BPricingSummary;
   b2b_selling_total: string;
+  allocation_status?: string;
+  payment_status?: string;
   created_at: string;
   confirmation_deadline: string;
   eligible_rooms: B2BManualEligibleRoom[];

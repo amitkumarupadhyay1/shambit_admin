@@ -240,6 +240,7 @@ export interface B2BContract {
     profit_margin_type?: ProfitMarginType;
     tax_application?: TaxApplicationType;
     agent_deduction_strategy?: AgentDeductionStrategy;
+    platform_fee_override?: string | null;
     is_active: boolean;
     hotel_gst_rate?: string;
     shambit_profit_gst_rate?: string;
