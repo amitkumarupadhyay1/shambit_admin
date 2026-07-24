@@ -120,6 +120,39 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             refreshToken: creds.refresh as string,
           };
         }
+
+        if (creds.type === 'totp') {
+          try {
+            const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+            const response = await axios.post(`${apiUrl}/auth/totp/login/`, {
+              temp_token: creds.temp_token,
+              code: creds.totp_code,
+            }, {
+              validateStatus: (status) => status < 500
+            });
+            const data = response.data;
+            if (response.status === 200 && data.access) {
+              return {
+                id: String(data.user.id),
+                username: data.user.username,
+                firstName: data.user.first_name,
+                lastName: data.user.last_name,
+                phone: data.user.phone,
+                accessToken: data.access,
+                refreshToken: data.refresh,
+              };
+            }
+            if (response.status === 429) {
+               throw new Error("429");
+            }
+            throw new Error("TOTP_FAILED");
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } catch (error: any) {
+            if (error.message === "429" || error.message === "TOTP_FAILED") throw error;
+            throw new Error(error.response?.data?.error || "TOTP_FAILED");
+          }
+        }
+        
         return null;
       }
     })

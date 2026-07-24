@@ -3,6 +3,7 @@
 import { Settings } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { TwoFactorSettings } from '@/components/auth/TwoFactorSettings';
 
 export default function SettingsPage() {
   return (
@@ -14,20 +15,24 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-blue-600" />
-            Admin Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-600">
-            Use the sidebar Pricing section for tax, GST slabs, revenue profiles, rate plans,
-            demand events, simulation, and audit logs.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6">
+        <TwoFactorSettings />
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-blue-600" />
+              Admin Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">
+              Use the sidebar Pricing section for tax, GST slabs, revenue profiles, rate plans,
+              demand events, simulation, and audit logs.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

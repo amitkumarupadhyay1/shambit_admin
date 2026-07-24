@@ -16,6 +16,7 @@ interface BackendLoginResponse {
     is_superuser?: boolean;
     groups?: string[];
     permissions?: string[];
+    is_totp_enabled?: boolean;
   };
 }
 
